@@ -78,7 +78,7 @@
                     <q-item-section avatar><q-icon name="lan" color="grey-6" /></q-item-section>
                     <q-item-section>
                       <q-item-label caption>Local IP</q-item-label>
-                      <q-item-label class="text-weight-semi">{{ agent.local_ip }}</q-item-label>
+                      <q-item-label class="text-weight-semi">{{ agent.local_ips }}</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>

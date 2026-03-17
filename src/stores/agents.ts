@@ -12,7 +12,7 @@ export interface Agent {
   last_seen: string
   operating_system: string
   public_ip: string
-  local_ip: string
+  local_ips: string
   agent_id: string
   version: string
   boot_time: number
@@ -262,22 +262,38 @@ export const useAgentStore = defineStore('agents', {
           if (response.status === 200) {
             let finalUrl = ''
             const rawUrl = response.data?.[mode] || response.data?.url
+            
             if (rawUrl) {
               let refined = rawUrl
               if (refined.includes('viewmode=')) {
                 refined = refined.replace(/viewmode=\d+/, `viewmode=${viewmode}`)
               } else {
-                refined += `&viewmode=${viewmode}`
+                refined += refined.includes('?') ? '&' : '?'
+                refined += `viewmode=${viewmode}`
               }
-              refined += refined.includes('?') ? '&' : '?'
-              refined += 'mobile=1&touch=1&embedded=1&hide=31&starget=1'
+              if (!refined.includes('mobile=')) refined += '&mobile=1'
+              if (!refined.includes('touch=')) refined += '&touch=1'
+              if (!refined.includes('embedded=')) refined += '&embedded=1'
+              if (!refined.includes('hide=')) refined += '&hide=31'
+              if (!refined.includes('starget=')) refined += '&starget=1'
               finalUrl = refined
-            }
-            
-            if (!finalUrl && response.data?.token) {
+            } else if (response.data?.token) {
               const token = response.data.token
               const nodeid = response.data.nodeid || agentId
-              finalUrl = `https://mesh.gaulabs.com/?login=${token}&gotonode=${nodeid}&viewmode=${viewmode}&hide=31&embedded=1&starget=1&mobile=1&touch=1`
+              
+              // Attempt to derive mesh host from API URL if not provided
+              let meshHost = 'mesh.gaulabs.com'
+              try {
+                const apiHost = new URL(auth.apiUrl).hostname
+                if (apiHost.includes('.')) {
+                  const parts = apiHost.split('.')
+                  if (parts.length >= 2) {
+                    meshHost = `mesh.${parts.slice(-2).join('.')}`
+                  }
+                }
+              } catch (e) {}
+              
+              finalUrl = `https://${meshHost}/?login=${token}&gotonode=${nodeid}&viewmode=${viewmode}&hide=31&embedded=1&starget=1&mobile=1&touch=1`
             }
 
             if (finalUrl) {
