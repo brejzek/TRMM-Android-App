@@ -284,15 +284,16 @@ function sendMeshCommand(type: 'terminal' | 'remote') {
 }
 
 function handleTouchStart(e: TouchEvent) {
-  if (e.touches && e.touches.length > 0) {
-    lastTouchX = e.touches[0].clientX
-    lastTouchY = e.touches[0].clientY
+  const touch = e.touches[0]
+  if (touch) {
+    lastTouchX = touch.clientX
+    lastTouchY = touch.clientY
   }
 }
 
 function handleTouchMove(e: TouchEvent) {
-  if (e.touches && e.touches.length > 0) {
-    const touch = e.touches[0]
+  const touch = e.touches[0]
+  if (touch) {
     const deltaX = touch.clientX - lastTouchX
     const deltaY = touch.clientY - lastTouchY
     cursorX.value = Math.max(0, Math.min(window.innerWidth, cursorX.value + deltaX))
