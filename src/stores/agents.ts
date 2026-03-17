@@ -272,8 +272,24 @@ export const useAgentStore = defineStore('agents', {
               if (!finalUrl.includes('viewmode=')) finalUrl += `${finalUrl.includes('?') ? '&' : '?'}viewmode=${viewmode}`
             } else if (response.data?.token) {
               const { token, nodeid } = response.data
-              const domain = new URL(auth.apiUrl).hostname.split('.').slice(-2).join('.')
-              finalUrl = `https://mesh.${domain}/?login=${token}&gotonode=${nodeid || agentId}&viewmode=${viewmode}`
+              
+              let meshHost = ''
+              try {
+                const apiHost = new URL(auth.apiUrl).hostname
+                if (apiHost.startsWith('api.')) {
+                  meshHost = apiHost.replace(/^api\./, 'mesh.')
+                } else if (apiHost.startsWith('rmm.')) {
+                  meshHost = apiHost.replace(/^rmm\./, 'mesh.')
+                } else {
+                  // Fallback to base domain logic
+                  const domain = apiHost.split('.').slice(-2).join('.')
+                  meshHost = `mesh.${domain}`
+                }
+              } catch (e) {
+                meshHost = 'mesh.gaulabs.com' // logical fallback
+              }
+              
+              finalUrl = `https://${meshHost}/?login=${token}&gotonode=${nodeid || agentId}&viewmode=${viewmode}`
             }
 
             if (finalUrl) {
