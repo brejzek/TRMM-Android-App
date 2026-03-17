@@ -166,7 +166,7 @@ export const useAgentStore = defineStore('agents', {
       this.managementLoading = true
       try {
         const response = await CapacitorHttp.get({
-          url: `${auth.apiUrl}/api/v3/agents/${agentId}/${type}/`,
+          url: `${auth.apiUrl}${this.discoveredBasePath}${agentId}/${type}/`,
           headers: { 'X-API-KEY': auth.apiKey }
         })
 
@@ -187,20 +187,27 @@ export const useAgentStore = defineStore('agents', {
       if (!auth.isAuthenticated) return
 
       this.managementLoading = true
-      try {
-        const response = await CapacitorHttp.get({
-          url: `${auth.apiUrl}/api/v3/scripts/`,
-          headers: { 'X-API-KEY': auth.apiKey }
-        })
+      const endpoints = [
+        '/api/v3/scripts/',
+        '/scripts/',
+        '/api/v1/scripts/',
+      ]
 
-        if (response.status === 200) {
-          this.scripts = response.data
-        }
-      } catch (e) {
-        console.error('Failed to fetch scripts', e)
-      } finally {
-        this.managementLoading = false
+      for (const path of endpoints) {
+        try {
+          const response = await CapacitorHttp.get({
+            url: `${auth.apiUrl}${path}`,
+            headers: { 'X-API-KEY': auth.apiKey }
+          })
+
+          if (response.status === 200) {
+            this.scripts = response.data
+            this.managementLoading = false
+            return
+          }
+        } catch (e) {}
       }
+      this.managementLoading = false
     },
 
     async runAgentCommand(agentId: string | number, action: string, data: any = {}) {
@@ -209,7 +216,7 @@ export const useAgentStore = defineStore('agents', {
 
       try {
         const response = await CapacitorHttp.post({
-          url: `${auth.apiUrl}/api/v3/agents/${agentId}/${action}/`,
+          url: `${auth.apiUrl}${this.discoveredBasePath}${agentId}/${action}/`,
           data,
           headers: { 
             'X-API-KEY': auth.apiKey,
