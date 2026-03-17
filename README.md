@@ -76,5 +76,3 @@ This app uses your TacticalRMM API Key for authentication. Ensure your API Keys 
 Contributions are welcome! Please feel free to submit a Pull Request or open an issue for any bugs or feature requests.
 
 ---
-
-*Built with ❤️ for the TacticalRMM Community.*
