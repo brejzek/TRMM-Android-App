@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TacticalRMM</string>
+    <string name="title_activity_main">TacticalRMM</string>
+    <string name="package_name">com.tacticalrmm.app</string>
+    <string name="custom_url_scheme">com.tacticalrmm.app</string>
+</resources>
