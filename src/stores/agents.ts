@@ -162,12 +162,22 @@ export const useAgentStore = defineStore('agents', {
       if (!auth.isAuthenticated) return
 
       this.managementLoading = true
-      // Try both discovered path and standard path
-      const paths = [
-        `${this.discoveredBasePath}${agentId}/${type}/`,
-        `/api/v3/agents/${agentId}/${type}/`,
-        `/agents/${agentId}/${type}/`
-      ]
+      
+      const typeMap: Record<string, string[]> = {
+        services: ['winservices', 'services', 'getservices'],
+        software: ['software', 'inventory', 'getsoftware'],
+        processes: ['processes']
+      }
+
+      const subtypes = typeMap[type] || [type]
+      const basePaths = [this.discoveredBasePath, '/api/v3/agents/', '/agents/']
+      
+      const paths: string[] = []
+      basePaths.forEach(base => {
+        subtypes.forEach(sub => {
+          paths.push(`${base}${agentId}/${sub}/`)
+        })
+      })
 
       for (const path of [...new Set(paths)]) {
         try {
@@ -194,8 +204,8 @@ export const useAgentStore = defineStore('agents', {
 
       this.managementLoading = true
       const endpoints = [
-        '/api/v3/scripts/',
         '/scripts/',
+        '/api/v3/scripts/',
         '/api/v1/scripts/',
       ]
 
@@ -220,11 +230,11 @@ export const useAgentStore = defineStore('agents', {
       const auth = useAuthStore()
       if (!auth.isAuthenticated) return false
 
-      const paths = [
-        `${this.discoveredBasePath}${agentId}/${action}/`,
-        `/api/v3/agents/${agentId}/${action}/`,
-        `/agents/${agentId}/${action}/`
-      ]
+      const basePaths = [this.discoveredBasePath, '/api/v3/agents/', '/agents/']
+      const paths: string[] = []
+      basePaths.forEach(base => {
+        paths.push(`${base}${agentId}/${action}/`)
+      })
 
       for (const path of [...new Set(paths)]) {
         try {
@@ -249,13 +259,17 @@ export const useAgentStore = defineStore('agents', {
       const modeMap = { 'control': '11', 'terminal': '12', 'file': '13' }
       const viewmode = modeMap[mode] || '11'
 
-      const endpoints = [
-        `${this.discoveredBasePath}${agentId}/token/`,
-        `/api/v3/agents/${agentId}/token/`,
-        `/agents/${agentId}/token/`
-      ]
+      const basePaths = [this.discoveredBasePath, '/api/v3/agents/', '/agents/']
+      const tokenEndpoints = ['mesh', 'token', 'meshcentral']
+      
+      const paths: string[] = []
+      basePaths.forEach(base => {
+        tokenEndpoints.forEach(end => {
+          paths.push(`${base}${agentId}/${end}/`)
+        })
+      })
 
-      for (const path of [...new Set(endpoints)]) {
+      for (const path of [...new Set(paths)]) {
         try {
           const response = await CapacitorHttp.get({
             url: `${auth.apiUrl}${path}`,
@@ -278,15 +292,13 @@ export const useAgentStore = defineStore('agents', {
                 const apiHost = new URL(auth.apiUrl).hostname
                 if (apiHost.startsWith('api.')) {
                   meshHost = apiHost.replace(/^api\./, 'mesh.')
-                } else if (apiHost.startsWith('rmm.')) {
-                  meshHost = apiHost.replace(/^rmm\./, 'mesh.')
                 } else {
                   // Fallback to base domain logic
                   const domain = apiHost.split('.').slice(-2).join('.')
                   meshHost = `mesh.${domain}`
                 }
               } catch (e) {
-                meshHost = 'mesh.gaulabs.com' // logical fallback
+                meshHost = 'mesh.gaulabs.com'
               }
               
               finalUrl = `https://${meshHost}/?login=${token}&gotonode=${nodeid || agentId}&viewmode=${viewmode}`
@@ -302,7 +314,6 @@ export const useAgentStore = defineStore('agents', {
               params.set('starget', '1')
               urlObj.search = params.toString()
               
-              // Prime session
               try { await CapacitorHttp.get({ url: urlObj.toString(), disableRedirects: true }) } catch (e) {}
               return urlObj.toString()
             }
