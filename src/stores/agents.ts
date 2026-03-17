@@ -164,8 +164,8 @@ export const useAgentStore = defineStore('agents', {
       this.managementLoading = true
       
       const typeMap: Record<string, string[]> = {
-        services: ['winservices', 'services', 'getservices'],
-        software: ['software', 'inventory', 'getsoftware'],
+        services: ['winsvcs', 'getwinsvcs', 'get_winsvcs', 'svcs', 'winservices', 'services', 'getservices'],
+        software: ['getsoftware', 'software', 'installed-software', 'inventory', 'get_installed_software'],
         processes: ['processes']
       }
 
