@@ -35,33 +35,6 @@
         <q-separator />
 
         <q-tab-panels v-model="tab" animated>
-          <!-- ... tabs preserved ... -->
-          
-          <!-- Scripts -->
-          <q-tab-panel name="scripts" class="q-pa-none">
-            <q-inner-loading :showing="agentStore.managementLoading">
-              <q-spinner-tail color="primary" size="3em" />
-            </q-inner-loading>
-            <div class="q-pa-md">
-              <q-input dense outlined v-model="scriptSearch" placeholder="Search scripts..." class="q-mb-md">
-                <template v-slot:append><q-icon name="search" /></template>
-              </q-input>
-            </div>
-            <q-list separator>
-              <q-item v-for="script in filteredScripts" :key="script.id" clickable @click="runScript(script)">
-                <q-item-section avatar>
-                  <q-icon name="description" color="primary" />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label class="text-weight-semi">{{ script.name }}</q-item-label>
-                  <q-item-label caption>{{ script.category }}</q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                  <q-btn flat round icon="play_circle_outline" color="primary" />
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-tab-panel>
           <!-- General Info -->
           <q-tab-panel name="info" class="q-pa-md">
             <div class="row q-col-gutter-md">
@@ -112,10 +85,8 @@
 
           <!-- Services management -->
           <q-tab-panel name="services" class="q-pa-none">
-            <q-inner-loading :showing="agentStore.managementLoading">
-              <q-spinner-tail color="primary" size="3em" />
-            </q-inner-loading>
             <q-list separator>
+              <q-inner-loading :showing="agentStore.managementLoading"><q-spinner-tail color="primary" size="3em" /></q-inner-loading>
               <q-item v-for="svc in agentStore.services" :key="svc.name" class="q-py-md">
                 <q-item-section>
                   <q-item-label class="text-weight-bold">{{ svc.display_name }}</q-item-label>
@@ -150,13 +121,11 @@
 
           <!-- Process list -->
           <q-tab-panel name="processes" class="q-pa-none">
-            <q-inner-loading :showing="agentStore.managementLoading">
-              <q-spinner-tail color="primary" size="3em" />
-            </q-inner-loading>
             <q-table
               dense
               flat
               :rows="agentStore.processes"
+              :loading="agentStore.managementLoading"
               :columns="[
                 { name: 'pid', label: 'PID', field: 'pid', align: 'left', sortable: true },
                 { name: 'name', label: 'Process', field: 'name', align: 'left', sortable: true },
@@ -179,10 +148,8 @@
 
           <!-- Software inventory -->
           <q-tab-panel name="software" class="q-pa-none">
-            <q-inner-loading :showing="agentStore.managementLoading">
-              <q-spinner-tail color="primary" size="3em" />
-            </q-inner-loading>
             <q-list separator>
+              <q-inner-loading :showing="agentStore.managementLoading"><q-spinner-tail color="primary" size="3em" /></q-inner-loading>
               <q-item v-for="sw in agentStore.software" :key="sw.name">
                 <q-item-section>
                   <q-item-label class="text-weight-semi">{{ sw.name }}</q-item-label>
@@ -192,11 +159,29 @@
             </q-list>
           </q-tab-panel>
 
+          <!-- Scripts -->
+          <q-tab-panel name="scripts" class="q-pa-none">
+            <div class="q-pa-md">
+              <q-input dense outlined v-model="scriptSearch" placeholder="Search scripts..." class="q-mb-md">
+                <template v-slot:append><q-icon name="search" /></template>
+              </q-input>
+            </div>
+            <q-list separator>
+              <q-inner-loading :showing="agentStore.managementLoading"><q-spinner-tail color="primary" size="3em" /></q-inner-loading>
+              <q-item v-for="script in filteredScripts" :key="script.id" clickable @click="runScript(script)">
+                <q-item-section avatar><q-icon name="description" color="primary" /></q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-semi">{{ script.name }}</q-item-label>
+                  <q-item-label caption>{{ script.category }}</q-item-label>
+                </q-item-section>
+                <q-item-section side><q-btn flat round icon="play_circle_outline" color="primary" /></q-item-section>
+              </q-item>
+            </q-list>
+          </q-tab-panel>
+
           <!-- Terminal -->
           <q-tab-panel name="terminal" class="no-padding bg-black" style="height: 60vh">
-            <div v-if="meshLoading" class="flex flex-center full-height">
-              <q-spinner-terminal color="white" size="3em" />
-            </div>
+            <div v-if="meshLoading" class="flex flex-center full-height"><q-spinner-terminal color="white" size="3em" /></div>
             <template v-else-if="terminalUrl">
               <div class="row items-center q-pa-sm bg-grey-9">
                 <q-input dense filled v-model="meshCommand" placeholder="Type command..." class="col" dark @keyup.enter="sendMeshCommand('terminal')" />
@@ -208,15 +193,27 @@
 
           <!-- Remote Desktop -->
           <q-tab-panel name="remote" class="no-padding bg-black" style="height: 60vh">
-            <div v-if="meshLoading" class="flex flex-center full-height">
-              <q-spinner color="white" size="3em" />
-            </div>
+            <div v-if="meshLoading" class="flex flex-center full-height"><q-spinner color="white" size="3em" /></div>
             <template v-else-if="remoteUrl">
-              <div class="row items-center q-pa-sm bg-grey-9">
+              <div class="row items-center q-pa-sm bg-grey-9 relative-position">
                 <q-input dense filled v-model="meshCommand" placeholder="Remote type..." class="col" dark @keyup.enter="sendMeshCommand('remote')" />
                 <q-btn flat round icon="send" color="primary" @click="sendMeshCommand('remote')" />
+                <q-btn flat round :icon="trackpadActive ? 'mouse' : 'touch_app'" :color="trackpadActive ? 'primary' : 'white'" @click="trackpadActive = !trackpadActive">
+                  <q-tooltip>Toggle Trackpad</q-tooltip>
+                </q-btn>
               </div>
-              <iframe :src="remoteUrl" id="mesh-remote" class="full-width full-height border-none"></iframe>
+              <div class="relative-position full-width" style="height: calc(60vh - 48px)">
+                <iframe :src="remoteUrl" id="mesh-remote" class="full-width h-full border-none"></iframe>
+                <div v-if="trackpadActive" class="absolute-full z-top" style="background: rgba(0,0,0,0.1)" @touchstart="handleTouchStart" @touchmove="handleTouchMove">
+                  <div class="absolute-bottom-right q-pa-md row q-gutter-sm">
+                    <q-btn fab icon="mouse" color="primary" label="L" @click="sendMouseClick(2, 3)" />
+                    <q-btn fab icon="mouse" color="secondary" label="R" @click="sendMouseClick(4, 5)" />
+                  </div>
+                  <div class="absolute pointer-events-none" :style="{ left: cursorX + 'px', top: cursorY + 'px', transform: 'translate(-50%, -50%)' }">
+                    <q-icon name="navigation" color="primary" size="24px" class="cursor-rotate" />
+                  </div>
+                </div>
+              </div>
             </template>
           </q-tab-panel>
         </q-tab-panels>
@@ -242,6 +239,12 @@ const meshLoading = ref(false)
 const remoteUrl = ref('')
 const terminalUrl = ref('')
 const meshCommand = ref('')
+
+const trackpadActive = ref(false)
+const cursorX = ref(100)
+const cursorY = ref(100)
+let lastTouchX = 0
+let lastTouchY = 0
 
 const agentId = computed(() => route.params.id as string)
 const agent = computed(() => agentStore.agents.find(a => String(a.id) === agentId.value || String(a.agent_id) === agentId.value))
@@ -270,25 +273,57 @@ async function fetchMeshUrl(mode: 'control' | 'terminal') {
   }
 }
 
-
 function sendMeshCommand(type: 'terminal' | 'remote') {
   if (!meshCommand.value) return
   const iframe = document.getElementById(type === 'terminal' ? 'mesh-terminal' : 'mesh-remote') as HTMLIFrameElement
   if (iframe && iframe.contentWindow) {
-    // Attempt relay if same domain or if Mesh handles postMessage
-    // Since it's likely cross-domain, we'll try a generic focus/key relay trick
     iframe.focus()
-    // For now, if Mesh has a 'Type' icon, we are basically providing a dedicated input for it.
-    // However, if we can't postMessage, we'll suggest using the built-in one if this doesn't work.
     $q.notify({ message: `Relaying: ${meshCommand.value}`, color: 'primary' })
     meshCommand.value = ''
+  }
+}
+
+function handleTouchStart(e: TouchEvent) {
+  if (e.touches && e.touches.length > 0) {
+    lastTouchX = e.touches[0].clientX
+    lastTouchY = e.touches[0].clientY
+  }
+}
+
+function handleTouchMove(e: TouchEvent) {
+  if (e.touches && e.touches.length > 0) {
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - lastTouchX
+    const deltaY = touch.clientY - lastTouchY
+    cursorX.value = Math.max(0, Math.min(window.innerWidth, cursorX.value + deltaX))
+    cursorY.value = Math.max(0, Math.min(window.innerHeight * 0.6, cursorY.value + deltaY))
+    lastTouchX = touch.clientX
+    lastTouchY = touch.clientY
+    relayMouseEvent(1) // Move
+  }
+}
+
+function sendMouseClick(down: number, up: number) {
+  relayMouseEvent(down)
+  setTimeout(() => relayMouseEvent(up), 50)
+}
+
+function relayMouseEvent(button: number) {
+  const iframe = document.getElementById('mesh-remote') as HTMLIFrameElement
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({
+      type: 'mouse',
+      x: Math.round(cursorX.value),
+      y: Math.round(cursorY.value),
+      button
+    }, '*')
   }
 }
 
 async function killProcess(pid: number, name: string) {
   $q.dialog({
     title: 'Kill Process',
-    message: `Are you sure you want to terminate ${name} (PID: ${pid})?`,
+    message: `Are you sure you want to terminate ${name}?`,
     cancel: true,
     persistent: true
   }).onOk(async () => {
@@ -303,7 +338,6 @@ async function killProcess(pid: number, name: string) {
 }
 
 async function manageService(name: string, action: string) {
-  $q.notify({ message: `Executing ${action} on ${name}...`, color: 'primary' })
   const success = await agentStore.runAgentCommand(agentId.value, 'service_action', { service_name: name, action })
   if (success) {
     $q.notify({ type: 'positive', message: 'Command accepted' })
@@ -316,14 +350,13 @@ async function manageService(name: string, action: string) {
 async function runScript(script: any) {
   $q.dialog({
     title: 'Run Script',
-    message: `Are you sure you want to run "${script.name}" on ${agent.value?.hostname}?`,
+    message: `Run "${script.name}"?`,
     cancel: true,
     persistent: true
   }).onOk(async () => {
-    $q.notify({ message: 'Triggering script...', color: 'primary' })
     const success = await agentStore.runAgentCommand(agentId.value, 'runscript', { script_id: script.id })
-    if (success) $q.notify({ type: 'positive', message: 'Script triggered successfully' })
-    else $q.notify({ type: 'negative', message: 'Failed to trigger script' })
+    if (success) $q.notify({ type: 'positive', message: 'Script triggered' })
+    else $q.notify({ type: 'negative', message: 'Failed to trigger' })
   })
 }
 
@@ -363,9 +396,7 @@ onMounted(() => {
 .text-emerald-600 { color: #059669; }
 .text-rose-600 { color: #e11d48; }
 .border-none { border: none; }
-
-/* Denser table for mobile management */
-:deep(.q-table th), :deep(.q-table td) {
-  padding: 8px 12px;
-}
+.h-full { height: 100%; }
+.cursor-rotate { transform: rotate(135deg); }
+:deep(.q-table th), :deep(.q-table td) { padding: 8px 12px; }
 </style>
