@@ -190,7 +190,12 @@
             <div v-if="meshLoading" class="flex flex-center full-height">
               <q-spinner-terminal color="white" size="3em" />
             </div>
-            <iframe v-else-if="terminalUrl" :src="terminalUrl" class="full-width full-height border-none"></iframe>
+            <template v-else-if="terminalUrl">
+              <div class="absolute-top-right q-pa-sm z-top">
+                <q-btn round color="primary" icon="keyboard" @click="showKeyboard" />
+              </div>
+              <iframe :src="terminalUrl" class="full-width full-height border-none"></iframe>
+            </template>
           </q-tab-panel>
 
           <!-- Remote Desktop -->
@@ -198,11 +203,23 @@
             <div v-if="meshLoading" class="flex flex-center full-height">
               <q-spinner color="white" size="3em" />
             </div>
-            <iframe v-else-if="remoteUrl" :src="remoteUrl" class="full-width full-height border-none"></iframe>
+            <template v-else-if="remoteUrl">
+              <div class="absolute-top-right q-pa-sm z-top">
+                <q-btn round color="primary" icon="keyboard" @click="showKeyboard" />
+              </div>
+              <iframe :src="remoteUrl" class="full-width full-height border-none"></iframe>
+            </template>
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
     </div>
+    <!-- Hidden input for keyboard trigger -->
+    <input 
+      ref="kbInput" 
+      type="text" 
+      style="position: absolute; opacity: 0; pointer-events: none; z-index: -1"
+      @keyup.enter="kbInput?.blur()"
+    />
   </q-page>
 </template>
 
@@ -222,6 +239,7 @@ const scriptSearch = ref('')
 const meshLoading = ref(false)
 const remoteUrl = ref('')
 const terminalUrl = ref('')
+const kbInput = ref<HTMLInputElement | null>(null)
 
 const agentId = computed(() => route.params.id as string)
 const agent = computed(() => agentStore.agents.find(a => String(a.id) === agentId.value || String(a.agent_id) === agentId.value))
@@ -247,6 +265,13 @@ async function fetchMeshUrl(mode: 'control' | 'terminal') {
     $q.notify({ type: 'negative', message: 'Failed to connect' })
   } finally {
     meshLoading.value = false
+  }
+}
+
+function showKeyboard() {
+  if (kbInput.value) {
+    kbInput.value.focus()
+    kbInput.value.click()
   }
 }
 

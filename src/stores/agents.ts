@@ -316,7 +316,7 @@ export const useAgentStore = defineStore('agents', {
             if (finalUrl) {
               const urlObj = new URL(finalUrl)
               const params = new URLSearchParams(urlObj.search)
-              params.set('mobile', '1')
+              params.set('mobile', '0')
               params.set('touch', '1')
               params.set('embedded', '1')
               params.set('hide', '31')
