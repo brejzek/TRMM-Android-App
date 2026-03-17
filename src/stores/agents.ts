@@ -72,7 +72,7 @@ export const useAgentStore = defineStore('agents', {
     loading: false,
     managementLoading: false,
     error: null as string | null,
-    discoveredBasePath: localStorage.getItem('discoveredBasePath') || '/agents/' as string,
+    discoveredBasePath: localStorage.getItem('discoveredBasePath') || '/api/v3/agents/' as string,
   }),
   getters: {
     getGroups: (state): ClientGroup[] => {
@@ -118,15 +118,13 @@ export const useAgentStore = defineStore('agents', {
       
       for (const path of uniqueEndpoints) {
         try {
-          const options = {
+          const response = await CapacitorHttp.get({
             url: `${auth.apiUrl}${path}`,
             headers: {
               'X-API-KEY': auth.apiKey,
               'Content-Type': 'application/json'
             }
-          }
-          
-          const response = await CapacitorHttp.get(options)
+          })
           
           if (response.status === 200) {
             let rawAgents = []
@@ -140,7 +138,8 @@ export const useAgentStore = defineStore('agents', {
             
             this.agents = rawAgents.map((a: any) => ({
               ...a,
-              id: a.id || a.agent_id
+              id: a.agent_id || a.id || a.pk,
+              local_ips: a.local_ips || a.local_ip || ''
             }))
             
             this.error = null
@@ -155,7 +154,6 @@ export const useAgentStore = defineStore('agents', {
       }
 
       this.error = lastError
-      this.agents = []
       this.loading = false
     },
 
@@ -164,22 +162,30 @@ export const useAgentStore = defineStore('agents', {
       if (!auth.isAuthenticated) return
 
       this.managementLoading = true
-      try {
-        const response = await CapacitorHttp.get({
-          url: `${auth.apiUrl}${this.discoveredBasePath}${agentId}/${type}/`,
-          headers: { 'X-API-KEY': auth.apiKey }
-        })
+      // Try both discovered path and standard path
+      const paths = [
+        `${this.discoveredBasePath}${agentId}/${type}/`,
+        `/api/v3/agents/${agentId}/${type}/`,
+        `/agents/${agentId}/${type}/`
+      ]
 
-        if (response.status === 200) {
-          if (type === 'services') this.services = response.data
-          else if (type === 'software') this.software = response.data
-          else if (type === 'processes') this.processes = response.data
-        }
-      } catch (e) {
-        console.error(`Failed to fetch ${type}`, e)
-      } finally {
-        this.managementLoading = false
+      for (const path of [...new Set(paths)]) {
+        try {
+          const response = await CapacitorHttp.get({
+            url: `${auth.apiUrl}${path}`,
+            headers: { 'X-API-KEY': auth.apiKey }
+          })
+
+          if (response.status === 200) {
+            if (type === 'services') this.services = response.data
+            else if (type === 'software') this.software = response.data
+            else if (type === 'processes') this.processes = response.data
+            this.managementLoading = false
+            return
+          }
+        } catch (e) {}
       }
+      this.managementLoading = false
     },
 
     async fetchScripts() {
@@ -214,93 +220,75 @@ export const useAgentStore = defineStore('agents', {
       const auth = useAuthStore()
       if (!auth.isAuthenticated) return false
 
-      try {
-        const response = await CapacitorHttp.post({
-          url: `${auth.apiUrl}${this.discoveredBasePath}${agentId}/${action}/`,
-          data,
-          headers: { 
-            'X-API-KEY': auth.apiKey,
-            'Content-Type': 'application/json'
-          }
-        })
-        return response.status === 200 || response.status === 202
-      } catch (e) {
-        console.error(`Command ${action} failed`, e)
-        return false
+      const paths = [
+        `${this.discoveredBasePath}${agentId}/${action}/`,
+        `/api/v3/agents/${agentId}/${action}/`,
+        `/agents/${agentId}/${action}/`
+      ]
+
+      for (const path of [...new Set(paths)]) {
+        try {
+          const response = await CapacitorHttp.post({
+            url: `${auth.apiUrl}${path}`,
+            data,
+            headers: { 
+              'X-API-KEY': auth.apiKey,
+              'Content-Type': 'application/json'
+            }
+          })
+          if (response.status === 200 || response.status === 202) return true
+        } catch (e) {}
       }
+      return false
     },
 
     async getMeshUrl(agentId: number | string, mode: 'control' | 'terminal' | 'file') {
       const auth = useAuthStore()
       if (!auth.isAuthenticated) return null
 
-      const modeMap = {
-        'control': '11',
-        'terminal': '12',
-        'file': '13'
-      }
+      const modeMap = { 'control': '11', 'terminal': '12', 'file': '13' }
       const viewmode = modeMap[mode] || '11'
 
       const endpoints = [
-        `/api/v3/agents/${agentId}/token/`,
         `${this.discoveredBasePath}${agentId}/token/`,
+        `/api/v3/agents/${agentId}/token/`,
+        `/agents/${agentId}/token/`
       ]
 
-      for (const path of endpoints) {
+      for (const path of [...new Set(endpoints)]) {
         try {
-          const options = {
-            url: path.startsWith('http') ? path : `${auth.apiUrl}${path}`,
+          const response = await CapacitorHttp.get({
+            url: `${auth.apiUrl}${path}`,
             params: { mode },
-            headers: {
-              'X-API-KEY': auth.apiKey,
-              'Content-Type': 'application/json'
-            }
-          }
-          
-          const response = await CapacitorHttp.get(options)
+            headers: { 'X-API-KEY': auth.apiKey }
+          })
           
           if (response.status === 200) {
             let finalUrl = ''
             const rawUrl = response.data?.[mode] || response.data?.url
             
             if (rawUrl) {
-              let refined = rawUrl
-              if (refined.includes('viewmode=')) {
-                refined = refined.replace(/viewmode=\d+/, `viewmode=${viewmode}`)
-              } else {
-                refined += refined.includes('?') ? '&' : '?'
-                refined += `viewmode=${viewmode}`
-              }
-              if (!refined.includes('mobile=')) refined += '&mobile=1'
-              if (!refined.includes('touch=')) refined += '&touch=1'
-              if (!refined.includes('embedded=')) refined += '&embedded=1'
-              if (!refined.includes('hide=')) refined += '&hide=31'
-              if (!refined.includes('starget=')) refined += '&starget=1'
-              finalUrl = refined
+              finalUrl = rawUrl.replace(/viewmode=\d+/, `viewmode=${viewmode}`)
+              if (!finalUrl.includes('viewmode=')) finalUrl += `${finalUrl.includes('?') ? '&' : '?'}viewmode=${viewmode}`
             } else if (response.data?.token) {
-              const token = response.data.token
-              const nodeid = response.data.nodeid || agentId
-              
-              // Attempt to derive mesh host from API URL if not provided
-              let meshHost = 'mesh.gaulabs.com'
-              try {
-                const apiHost = new URL(auth.apiUrl).hostname
-                if (apiHost.includes('.')) {
-                  const parts = apiHost.split('.')
-                  if (parts.length >= 2) {
-                    meshHost = `mesh.${parts.slice(-2).join('.')}`
-                  }
-                }
-              } catch (e) {}
-              
-              finalUrl = `https://${meshHost}/?login=${token}&gotonode=${nodeid}&viewmode=${viewmode}&hide=31&embedded=1&starget=1&mobile=1&touch=1`
+              const { token, nodeid } = response.data
+              const domain = new URL(auth.apiUrl).hostname.split('.').slice(-2).join('.')
+              finalUrl = `https://mesh.${domain}/?login=${token}&gotonode=${nodeid || agentId}&viewmode=${viewmode}`
             }
 
             if (finalUrl) {
-              try {
-                await CapacitorHttp.get({ url: finalUrl, disableRedirects: true })
-              } catch (e) {}
-              return finalUrl
+              const urlObj = new URL(finalUrl)
+              const params = new URLSearchParams(urlObj.search)
+              params.set('mobile', '1')
+              params.set('touch', '1')
+              params.set('embedded', '1')
+              params.set('hide', '31')
+              params.set('starget', '1')
+              urlObj.search = params.toString()
+              
+              // Prime session
+              try { await CapacitorHttp.get({ url: urlObj.toString(), disableRedirects: true }) } catch (e) {}
+              return urlObj.toString()
             }
           }
         } catch (err: any) {}
