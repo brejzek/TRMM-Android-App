@@ -51,8 +51,9 @@ export interface AgentSoftware {
 export interface AgentProcess {
   pid: number
   name: string
-  cpu_percent: number
-  memory_percent: number
+  cpu_percent: string | number
+  membytes: number
+  username: string
 }
 
 export interface AgentScript {
@@ -139,7 +140,7 @@ export const useAgentStore = defineStore('agents', {
             this.agents = rawAgents.map((a: any) => ({
               ...a,
               id: a.agent_id || a.id || a.pk,
-              local_ips: a.local_ips || a.local_ip || ''
+              local_ips: a.local_ips || (Array.isArray(a.local_ip) ? a.local_ip.join(', ') : a.local_ip) || ''
             }))
             
             this.error = null
@@ -175,7 +176,15 @@ export const useAgentStore = defineStore('agents', {
       const paths: string[] = []
       basePaths.forEach(base => {
         subtypes.forEach(sub => {
+          // Pattern 1: /agents/{id}/{sub}/ (e.g. /agents/ID/processes/)
           paths.push(`${base}${agentId}/${sub}/`)
+          
+          // Pattern 2: /{sub}/{id}/ (e.g. /software/ID/) 
+          // (Only try if base starts with / and we can extract a possible root)
+          if (base.startsWith('/')) {
+            paths.push(`/${sub}/${agentId}/`)
+            paths.push(`/api/v3/${sub}/${agentId}/`)
+          }
         })
       })
 

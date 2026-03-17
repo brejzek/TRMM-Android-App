@@ -158,10 +158,11 @@
               flat
               :rows="agentStore.processes"
               :columns="[
-                { name: 'pid', label: 'PID', field: 'pid', align: 'left' },
-                { name: 'name', label: 'Object', field: 'name', align: 'left' },
-                { name: 'cpu', label: 'CPU %', field: 'cpu_percent', align: 'right' },
-                { name: 'mem', label: 'MEM %', field: 'memory_percent', align: 'right' },
+                { name: 'pid', label: 'PID', field: 'pid', align: 'left', sortable: true },
+                { name: 'name', label: 'Process', field: 'name', align: 'left', sortable: true },
+                { name: 'user', label: 'User', field: 'username', align: 'left', sortable: true },
+                { name: 'cpu', label: 'CPU %', field: 'cpu_percent', align: 'right', sortable: true },
+                { name: 'mem', label: 'Mem', field: 'membytes', align: 'right', format: val => formatBytes(val), sortable: true },
               ]"
               row-key="pid"
               :pagination="{ rowsPerPage: 0 }"
@@ -272,6 +273,15 @@ async function runScript(script: any) {
     if (success) $q.notify({ type: 'positive', message: 'Script triggered successfully' })
     else $q.notify({ type: 'negative', message: 'Failed to trigger script' })
   })
+}
+
+function formatBytes(bytes: number, decimals = 2) {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
 function sendCommand(cmd: string) {
