@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> **Disclaimer**: This project is 100% AI Generated.
+
 # TacticalRMM Mobile (TRMM-Android-App)
 
 A powerful, high-fidelity mobile companion for [TacticalRMM](https://tacticalrmm.com/). This application allows MSPs and IT professionals to monitor and manage their endpoints directly from their Android devices with a stunning, modern interface.
