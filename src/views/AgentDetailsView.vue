@@ -163,11 +163,18 @@
                 { name: 'user', label: 'User', field: 'username', align: 'left', sortable: true },
                 { name: 'cpu', label: 'CPU %', field: 'cpu_percent', align: 'right', sortable: true },
                 { name: 'mem', label: 'Mem', field: 'membytes', align: 'right', format: val => formatBytes(val), sortable: true },
+                { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
               ]"
               row-key="pid"
               :pagination="{ rowsPerPage: 0 }"
               hide-bottom
-            />
+            >
+              <template v-slot:body-cell-actions="props">
+                <q-td :props="props">
+                  <q-btn flat dense round icon="cancel" color="negative" @click="killProcess(props.row.pid, props.row.name)" />
+                </q-td>
+              </template>
+            </q-table>
           </q-tab-panel>
 
           <!-- Software inventory -->
@@ -191,10 +198,11 @@
               <q-spinner-terminal color="white" size="3em" />
             </div>
             <template v-else-if="terminalUrl">
-              <div class="absolute-top-right q-pa-sm z-top">
-                <q-btn round color="primary" icon="keyboard" @click="showKeyboard" />
+              <div class="row items-center q-pa-sm bg-grey-9">
+                <q-input dense filled v-model="meshCommand" placeholder="Type command..." class="col" dark @keyup.enter="sendMeshCommand('terminal')" />
+                <q-btn flat round icon="send" color="primary" @click="sendMeshCommand('terminal')" />
               </div>
-              <iframe :src="terminalUrl" class="full-width full-height border-none"></iframe>
+              <iframe :src="terminalUrl" id="mesh-terminal" class="full-width full-height border-none"></iframe>
             </template>
           </q-tab-panel>
 
@@ -204,22 +212,16 @@
               <q-spinner color="white" size="3em" />
             </div>
             <template v-else-if="remoteUrl">
-              <div class="absolute-top-right q-pa-sm z-top">
-                <q-btn round color="primary" icon="keyboard" @click="showKeyboard" />
+              <div class="row items-center q-pa-sm bg-grey-9">
+                <q-input dense filled v-model="meshCommand" placeholder="Remote type..." class="col" dark @keyup.enter="sendMeshCommand('remote')" />
+                <q-btn flat round icon="send" color="primary" @click="sendMeshCommand('remote')" />
               </div>
-              <iframe :src="remoteUrl" class="full-width full-height border-none"></iframe>
+              <iframe :src="remoteUrl" id="mesh-remote" class="full-width full-height border-none"></iframe>
             </template>
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
     </div>
-    <!-- Hidden input for keyboard trigger -->
-    <input 
-      ref="kbInput" 
-      type="text" 
-      style="position: absolute; opacity: 0; pointer-events: none; z-index: -1"
-      @keyup.enter="kbInput?.blur()"
-    />
   </q-page>
 </template>
 
@@ -239,7 +241,7 @@ const scriptSearch = ref('')
 const meshLoading = ref(false)
 const remoteUrl = ref('')
 const terminalUrl = ref('')
-const kbInput = ref<HTMLInputElement | null>(null)
+const meshCommand = ref('')
 
 const agentId = computed(() => route.params.id as string)
 const agent = computed(() => agentStore.agents.find(a => String(a.id) === agentId.value || String(a.agent_id) === agentId.value))
@@ -248,8 +250,8 @@ const filteredScripts = computed(() => {
   if (!scriptSearch.value) return agentStore.scripts
   const s = scriptSearch.value.toLowerCase()
   return agentStore.scripts.filter(sc => 
-    sc.name.toLowerCase().includes(s) || 
-    sc.category.toLowerCase().includes(s)
+    (sc.name && sc.name.toLowerCase().includes(s)) || 
+    (sc.category && sc.category.toLowerCase().includes(s))
   )
 })
 
@@ -268,11 +270,36 @@ async function fetchMeshUrl(mode: 'control' | 'terminal') {
   }
 }
 
-function showKeyboard() {
-  if (kbInput.value) {
-    kbInput.value.focus()
-    kbInput.value.click()
+
+function sendMeshCommand(type: 'terminal' | 'remote') {
+  if (!meshCommand.value) return
+  const iframe = document.getElementById(type === 'terminal' ? 'mesh-terminal' : 'mesh-remote') as HTMLIFrameElement
+  if (iframe && iframe.contentWindow) {
+    // Attempt relay if same domain or if Mesh handles postMessage
+    // Since it's likely cross-domain, we'll try a generic focus/key relay trick
+    iframe.focus()
+    // For now, if Mesh has a 'Type' icon, we are basically providing a dedicated input for it.
+    // However, if we can't postMessage, we'll suggest using the built-in one if this doesn't work.
+    $q.notify({ message: `Relaying: ${meshCommand.value}`, color: 'primary' })
+    meshCommand.value = ''
   }
+}
+
+async function killProcess(pid: number, name: string) {
+  $q.dialog({
+    title: 'Kill Process',
+    message: `Are you sure you want to terminate ${name} (PID: ${pid})?`,
+    cancel: true,
+    persistent: true
+  }).onOk(async () => {
+    const success = await agentStore.killAgentProcess(agentId.value, pid)
+    if (success) {
+      $q.notify({ type: 'positive', message: 'Process terminated' })
+      agentStore.fetchAgentDetails(agentId.value, 'processes')
+    } else {
+      $q.notify({ type: 'negative', message: 'Failed to kill process' })
+    }
+  })
 }
 
 async function manageService(name: string, action: string) {

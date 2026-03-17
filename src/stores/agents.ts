@@ -261,6 +261,28 @@ export const useAgentStore = defineStore('agents', {
       return false
     },
 
+    async killAgentProcess(agentId: string | number, pid: number) {
+      const auth = useAuthStore()
+      if (!auth.isAuthenticated) return false
+      
+      const paths = [
+        `${this.discoveredBasePath}${agentId}/processes/${pid}/`,
+        `/api/v3/agents/${agentId}/processes/${pid}/`,
+        `/processes/${agentId}/${pid}/`
+      ]
+      
+      for (const path of [...new Set(paths)]) {
+        try {
+          const response = await CapacitorHttp.delete({
+            url: `${auth.apiUrl}${path}`,
+            headers: { 'X-API-KEY': auth.apiKey }
+          })
+          if (response.status === 200 || response.status === 204) return true
+        } catch (e) {}
+      }
+      return false
+    },
+
     async getMeshUrl(agentId: number | string, mode: 'control' | 'terminal' | 'file') {
       const auth = useAuthStore()
       if (!auth.isAuthenticated) return null
