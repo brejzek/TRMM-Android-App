@@ -35,10 +35,42 @@ export interface ClientGroup {
   sites: SiteGroup[]
 }
 
+export interface AgentService {
+  name: string
+  display_name: string
+  status: string
+  start_type: string
+}
+
+export interface AgentSoftware {
+  name: string
+  version: string
+  install_date: string
+}
+
+export interface AgentProcess {
+  pid: number
+  name: string
+  cpu_percent: number
+  memory_percent: number
+}
+
+export interface AgentScript {
+  id: number
+  name: string
+  description: string
+  category: string
+}
+
 export const useAgentStore = defineStore('agents', {
   state: () => ({
     agents: [] as Agent[],
+    services: [] as AgentService[],
+    software: [] as AgentSoftware[],
+    processes: [] as AgentProcess[],
+    scripts: [] as AgentScript[],
     loading: false,
+    managementLoading: false,
     error: null as string | null,
     discoveredBasePath: localStorage.getItem('discoveredBasePath') || '/agents/' as string,
   }),
@@ -76,19 +108,12 @@ export const useAgentStore = defineStore('agents', {
       this.error = null
       
       const endpoints = [
-        this.discoveredBasePath, // Try cached one first
-        '/agents/', // Known success for this user
+        this.discoveredBasePath,
+        '/agents/',
         '/api/v3/agents/',
-        '/api/v3/agents',
-        '/api/v2/agents/',
-        '/api/v1/agents/',
-        '/api/agents/',
-        '/api/beta/v1/agents/'
       ]
 
-      // Filter duplicates
       const uniqueEndpoints = [...new Set(endpoints)]
-
       let lastError = null
       
       for (const path of uniqueEndpoints) {
@@ -101,13 +126,9 @@ export const useAgentStore = defineStore('agents', {
             }
           }
           
-          console.log(`Trying endpoint: ${path}`)
           const response = await CapacitorHttp.get(options)
           
           if (response.status === 200) {
-            console.log(`Success on endpoint: ${path}`)
-            console.log('Agents API Response Type:', typeof response.data)
-            
             let rawAgents = []
             if (Array.isArray(response.data)) {
               rawAgents = response.data
@@ -115,14 +136,8 @@ export const useAgentStore = defineStore('agents', {
               rawAgents = response.data.results
             } else if (response.data && Array.isArray(response.data.agents)) {
               rawAgents = response.data.agents
-            } else {
-              console.error('Unexpected agents API response format:', response.data)
-              this.error = `Unexpected format on ${path}: ${typeof response.data}`
-              this.agents = []
-              return // Stop if we got a 200 but data is weird
             }
             
-            // Map agent_id to id if id is missing or null
             this.agents = rawAgents.map((a: any) => ({
               ...a,
               id: a.id || a.agent_id
@@ -132,14 +147,10 @@ export const useAgentStore = defineStore('agents', {
             this.loading = false
             this.discoveredBasePath = path
             localStorage.setItem('discoveredBasePath', path)
-            return // Success!
-          } else {
-            console.warn(`Endpoint ${path} returned ${response.status}`)
-            lastError = `Server returned ${response.status} on all attempted endpoints.`
+            return
           }
         } catch (err: any) {
-          console.error(`Error on endpoint ${path}:`, err)
-          lastError = err.message || 'Network error during discovery'
+          lastError = err.message || 'Network error'
         }
       }
 
@@ -147,11 +158,75 @@ export const useAgentStore = defineStore('agents', {
       this.agents = []
       this.loading = false
     },
+
+    async fetchAgentDetails(agentId: string | number, type: 'services' | 'software' | 'processes') {
+      const auth = useAuthStore()
+      if (!auth.isAuthenticated) return
+
+      this.managementLoading = true
+      try {
+        const response = await CapacitorHttp.get({
+          url: `${auth.apiUrl}/api/v3/agents/${agentId}/${type}/`,
+          headers: { 'X-API-KEY': auth.apiKey }
+        })
+
+        if (response.status === 200) {
+          if (type === 'services') this.services = response.data
+          else if (type === 'software') this.software = response.data
+          else if (type === 'processes') this.processes = response.data
+        }
+      } catch (e) {
+        console.error(`Failed to fetch ${type}`, e)
+      } finally {
+        this.managementLoading = false
+      }
+    },
+
+    async fetchScripts() {
+      const auth = useAuthStore()
+      if (!auth.isAuthenticated) return
+
+      this.managementLoading = true
+      try {
+        const response = await CapacitorHttp.get({
+          url: `${auth.apiUrl}/api/v3/scripts/`,
+          headers: { 'X-API-KEY': auth.apiKey }
+        })
+
+        if (response.status === 200) {
+          this.scripts = response.data
+        }
+      } catch (e) {
+        console.error('Failed to fetch scripts', e)
+      } finally {
+        this.managementLoading = false
+      }
+    },
+
+    async runAgentCommand(agentId: string | number, action: string, data: any = {}) {
+      const auth = useAuthStore()
+      if (!auth.isAuthenticated) return false
+
+      try {
+        const response = await CapacitorHttp.post({
+          url: `${auth.apiUrl}/api/v3/agents/${agentId}/${action}/`,
+          data,
+          headers: { 
+            'X-API-KEY': auth.apiKey,
+            'Content-Type': 'application/json'
+          }
+        })
+        return response.status === 200 || response.status === 202
+      } catch (e) {
+        console.error(`Command ${action} failed`, e)
+        return false
+      }
+    },
+
     async getMeshUrl(agentId: number | string, mode: 'control' | 'terminal' | 'file') {
       const auth = useAuthStore()
       if (!auth.isAuthenticated) return null
 
-      // Mapping mode to MeshCentral viewmode
       const modeMap = {
         'control': '11',
         'terminal': '12',
@@ -159,16 +234,10 @@ export const useAgentStore = defineStore('agents', {
       }
       const viewmode = modeMap[mode] || '11'
 
-      // Potential token/mesh endpoints - prioritizing official v3 token endpoint
       const endpoints = [
         `/api/v3/agents/${agentId}/token/`,
-        `${this.discoveredBasePath}${agentId}/meshcentral/`,
         `${this.discoveredBasePath}${agentId}/token/`,
-        `/api/v3/agents/${agentId}/meshcentral/`,
-        `/api/v3/agents/`, // Fallback for some versions
       ]
-
-      console.log(`Starting MeshCentral discovery for agent ${agentId} (mode: ${mode})...`)
 
       for (const path of endpoints) {
         try {
@@ -181,95 +250,38 @@ export const useAgentStore = defineStore('agents', {
             }
           }
           
-          console.log(`Trying mesh/token endpoint: ${path}`)
           const response = await CapacitorHttp.get(options)
           
           if (response.status === 200) {
             let finalUrl = ''
-            
-            // Case 1: API returns a full URL or mode-specific URLs
             const rawUrl = response.data?.[mode] || response.data?.url
             if (rawUrl) {
-              console.log(`API returned URL for ${mode}: ${rawUrl}`)
-              
-              if (rawUrl.includes('mesh.gaulabs.com')) {
-                // Tactical API returns a perfectly formed string with base64 token.
-                // We MUST NO re-parse with URL() as it breaks the token encoding.
-                let refined = rawUrl
-                
-                // Ensure correct viewmode for our request
-                if (refined.includes('viewmode=')) {
-                  refined = refined.replace(/viewmode=\d+/, `viewmode=${viewmode}`)
-                } else {
-                  refined += `&viewmode=${viewmode}`
-                }
-                
-                // Add mobile and touch flags for better UI/controls
-                if (!refined.includes('mobile=')) refined += '&mobile=1'
-                if (!refined.includes('touch=')) refined += '&touch=1'
-                
-                // Add embedded=1 for better UI/performance in iframe
-                if (refined.includes('embedded=')) {
-                  refined = refined.replace(/embedded=\d+/, 'embedded=1')
-                } else {
-                  refined += '&embedded=1'
-                }
-
-                // Restore hide=31 for production look (unless user wanted debug)
-                if (refined.includes('hide=')) {
-                  refined = refined.replace(/hide=\d+/, 'hide=31')
-                } else {
-                  refined += '&hide=31'
-                }
-
-                // Add starget=1 for silent target behavior
-                if (!refined.includes('starget=')) {
-                  refined += '&starget=1'
-                }
-
-                finalUrl = refined
-                console.log(`Final Mobile Mesh URL: ${finalUrl}`)
+              let refined = rawUrl
+              if (refined.includes('viewmode=')) {
+                refined = refined.replace(/viewmode=\d+/, `viewmode=${viewmode}`)
               } else {
-                finalUrl = rawUrl
+                refined += `&viewmode=${viewmode}`
               }
+              refined += refined.includes('?') ? '&' : '?'
+              refined += 'mobile=1&touch=1&embedded=1&hide=31&starget=1'
+              finalUrl = refined
             }
             
-            // Case 2: API returns a token structure
-            if (!finalUrl) {
-              const token = response.data?.token || response.data?.login_token
-              const nodeid = response.data?.nodeid || response.data?.mesh_node_id || agentId
-              
-              if (token) {
-                // Construct manually with mobile and touch flags
-                finalUrl = `https://mesh.gaulabs.com/?login=${token}&gotonode=${nodeid}&viewmode=${viewmode}&hide=31&embedded=1&starget=1&mobile=1&touch=1`
-                console.log(`Constructed Mobile Mesh URL from token: ${finalUrl}`)
-              }
+            if (!finalUrl && response.data?.token) {
+              const token = response.data.token
+              const nodeid = response.data.nodeid || agentId
+              finalUrl = `https://mesh.gaulabs.com/?login=${token}&gotonode=${nodeid}&viewmode=${viewmode}&hide=31&embedded=1&starget=1&mobile=1&touch=1`
             }
 
             if (finalUrl) {
-              // --- COOKIE PRIMING ---
-              // By making a native HTTP request first, we "prime" the native cookie jar 
-              // with the session cookie. Capacitor 5+ shares this jar with the WebView.
-              // IMPORTANT: disableRedirects: true prevents "consuming" one-time login tokens.
               try {
-                console.log(`Priming Mesh cookies for ${finalUrl}`)
-                await CapacitorHttp.get({ 
-                  url: finalUrl,
-                  disableRedirects: true // Capture cookie without consuming token!
-                })
-              } catch (e) {
-                console.warn('Cookie priming failed, proceeding anyway:', e)
-              }
+                await CapacitorHttp.get({ url: finalUrl, disableRedirects: true })
+              } catch (e) {}
               return finalUrl
             }
           }
-          console.warn(`Endpoint ${path} returned status ${response.status}`, response.data)
-        } catch (err: any) {
-          console.error(`Error on endpoint ${path}:`, err)
-        }
+        } catch (err: any) {}
       }
-
-      console.error('All MeshCentral discovery attempts failed.')
       return null
     },
   },

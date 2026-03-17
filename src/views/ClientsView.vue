@@ -1,108 +1,71 @@
 <template>
   <q-page class="q-pa-lg">
-    <div class="row items-center q-mb-xl">
-      <q-btn flat round icon="arrow_back" color="primary" class="glass-card q-mr-md" @click="router.back()" />
-      <div class="column">
-        <div class="text-h4 text-weight-bolder">Clients</div>
-        <div class="text-caption text-grey-5">Manage fleet by organization</div>
+    <div class="column q-gutter-y-lg">
+      <div class="row items-center">
+        <div class="column">
+          <div class="text-h5 text-weight-bold tracking-tight text-slate-900 leading-tight">Infrastructure Hub</div>
+          <div class="text-caption text-slate-500 q-mt-xs">Manage sites and organizations</div>
+        </div>
+        <q-space />
+        <q-btn flat round dense icon="refresh" color="grey-6" :loading="loading" @click="fetchData" />
       </div>
-    </div>
 
-    <div class="q-mb-lg">
-      <q-input 
-        v-model="search" 
-        placeholder="Search clients..." 
-        borderless
-        class="glass-card q-px-md q-py-sm"
-        input-class="text-white"
+      <q-input
+        v-model="search"
+        placeholder="Filter clients or sites..."
+        dense
+        outlined
+        bg-color="white"
+        class="standard-card"
       >
         <template v-slot:prepend>
-          <q-icon name="search" color="primary" />
+          <q-icon name="search" color="grey-6" />
         </template>
       </q-input>
-    </div>
 
-    <div v-if="loading" class="flex flex-center q-pa-xl">
-      <q-spinner-tail size="64px" color="primary" />
-    </div>
+      <div class="column q-gutter-y-md">
+        <q-card v-for="client in filteredGroups" :key="client.name" class="standard-card overflow-hidden" flat>
+          <q-expansion-item
+            header-class="q-pa-md text-weight-bold"
+            expand-icon-class="text-grey-7"
+          >
+            <template v-slot:header>
+              <q-item-section avatar>
+                <q-icon name="business" color="primary" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ client.name }}</q-item-label>
+                <q-item-label caption>{{ client.sites.length }} Sites</q-item-label>
+              </q-item-section>
+            </template>
 
-    <div v-else class="column q-gutter-y-md">
-      <q-card v-for="client in filteredGroups" :key="client.name" class="glass-card overflow-hidden">
-        <q-expansion-item
-          group="clients"
-          :label="client.name"
-          header-class="q-pa-lg text-h6 text-weight-bold"
-          expand-icon-class="text-primary"
-        >
-          <template v-slot:header>
-            <q-item-section avatar>
-              <q-avatar icon="business" color="primary" text-color="white" class="glass-panel" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-h6">{{ client.name }}</q-item-label>
-              <q-item-label caption class="text-grey-5">
-                {{ client.sites.length }} sites • {{ totalAgents(client) }} agents
-              </q-item-label>
-            </q-item-section>
-          </template>
-
-          <q-separator dark class="opacity-1" />
-
-          <q-list class="q-px-md q-pb-md">
-            <q-expansion-item
-              v-for="site in client.sites"
-              :key="site.name"
-              dense
-              class="q-mt-sm rounded-borders overflow-hidden"
-              header-class="glass-panel text-subtitle1"
-              :label="site.name"
-            >
-              <template v-slot:header>
+            <q-separator />
+            
+            <q-list padding>
+              <q-item v-for="site in client.sites" :key="site.name" clickable v-ripple @click="viewAgents(client, site)">
                 <q-item-section avatar>
-                  <q-icon name="place" color="secondary" size="xs" />
+                  <q-icon name="place" color="grey-6" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label>{{ site.name }}</q-item-label>
-                  <q-item-label caption class="text-grey-6">{{ site.agents.length }} agents</q-item-label>
+                  <q-item-label class="text-weight-medium">{{ site.name }}</q-item-label>
+                  <q-item-label caption>{{ site.agents?.length || 0 }} Agents</q-item-label>
                 </q-item-section>
-              </template>
-
-              <q-list padding class="q-pl-lg">
-                <q-item 
-                  v-for="agent in site.agents" 
-                  :key="agent.id" 
-                  clickable 
-                  v-ripple
-                  class="rounded-borders q-my-xs"
-                  @click="router.push(`/agents/${agent.id}`)"
-                >
-                  <q-item-section avatar>
-                    <q-icon 
-                      :name="agent.operating_system.toLowerCase().includes('windows') ? 'window' : 'computer'" 
-                      :color="getStatusColor(agent.status)" 
-                    />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>{{ agent.hostname }}</q-item-label>
-                    <q-item-label caption class="text-grey-6">{{ agent.public_ip }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <div :class="['status-pulse-small', getStatusPulseClass(agent.status)]"></div>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-expansion-item>
-          </q-list>
-        </q-expansion-item>
-      </q-card>
+                <q-item-section side>
+                  <q-icon name="chevron_right" color="grey-4" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-expansion-item>
+        </q-card>
+      </div>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAgentStore, type ClientGroup } from '../stores/agents'
+import { useAgentStore } from '../stores/agents'
 
 const router = useRouter()
 const agentStore = useAgentStore()
@@ -120,34 +83,19 @@ const filteredGroups = computed(() => {
   )
 })
 
-function totalAgents(client: ClientGroup) {
-  return client.sites.reduce((acc, s) => acc + s.agents.length, 0)
+function fetchData() {
+  agentStore.fetchAgents()
 }
 
-function getStatusColor(status: string) {
-  switch (status?.toLowerCase()) {
-    case 'online': return 'positive'
-    case 'offline': return 'negative'
-    case 'overdue': return 'warning'
-    default: return 'grey'
-  }
+function viewAgents(client: any, site: any) {
+  router.push({ name: 'agents', query: { client: client.id, site: site.id } })
 }
 
-function getStatusPulseClass(status: string) {
-  switch (status?.toLowerCase()) {
-    case 'online': return 'pulse-emerald bg-positive'
-    case 'offline': return 'bg-negative'
-    case 'overdue': return 'bg-warning'
-    default: return 'bg-grey'
-  }
-}
+onMounted(() => {
+  if (groups.value.length === 0) fetchData()
+})
 </script>
 
 <style scoped>
-.opacity-1 { opacity: 0.1; }
-.status-pulse-small {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
+.leading-tight { line-height: 1.25; }
 </style>

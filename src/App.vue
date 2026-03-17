@@ -1,29 +1,20 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header v-if="auth.isAuthenticated" class="glass-toolbar text-white">
-      <q-toolbar class="q-py-sm">
-        <q-btn
-          flat
-          dense
-          round
-          icon="widgets"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-          class="text-primary"
-        />
-
+    <!-- Clean Header -->
+    <q-header v-if="auth.isAuthenticated" elevated class="bg-white text-dark">
+      <q-toolbar>
         <q-toolbar-title class="text-weight-bold">
-          <span class="text-primary">Tactical</span><span class="text-white">RMM</span>
+          <span class="text-primary">Tactical</span>RMM
         </q-toolbar-title>
-
-        <q-btn flat round dense icon="account_circle" color="grey-4">
-          <q-menu class="glass-card q-pa-sm" transition-show="scale" transition-hide="scale">
+        
+        <q-btn flat round dense icon="account_circle" color="grey-7">
+          <q-menu flat square class="border-subtle" transition-show="scale" transition-hide="scale">
             <q-list style="min-width: 150px">
-              <q-item clickable v-vignette @click="logout" class="text-negative">
+              <q-item clickable @click="logout">
                 <q-item-section avatar>
-                  <q-icon name="logout" />
+                  <q-icon name="logout" color="negative" />
                 </q-item-section>
-                <q-item-section>Logout</q-item-section>
+                <q-item-section>Disconnect</q-item-section>
               </q-item>
             </q-list>
           </q-menu>
@@ -31,107 +22,56 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer
-      v-if="auth.isAuthenticated"
-      v-model="leftDrawerOpen"
-      show-if-above
-      behavior="mobile"
-      class="bg-dark"
-    >
-      <div class="column full-height">
-        <div class="q-pa-lg">
-          <div class="text-h5 text-weight-bold text-primary">Management</div>
-          <div class="text-caption text-grey-5">Control your fleet</div>
-        </div>
-
-        <q-list class="q-mt-md">
-          <q-item clickable v-ripple to="/agents" active-class="text-primary glass-panel">
-            <q-item-section avatar>
-              <q-icon name="devices" />
-            </q-item-section>
-            <q-item-section>Agents</q-item-section>
-          </q-item>
-
-          <q-item clickable v-ripple to="/clients" active-class="text-primary glass-panel">
-            <q-item-section avatar>
-              <q-icon name="business" />
-            </q-item-section>
-            <q-item-section>Clients</q-item-section>
-          </q-item>
-
-          <q-item clickable v-ripple class="text-grey-6">
-            <q-item-section avatar>
-              <q-icon name="code" />
-            </q-item-section>
-            <q-item-section>Scripts</q-item-section>
-            <q-item-section side>
-              <q-badge label="Soon" color="primary" outline />
-            </q-item-section>
-          </q-item>
-
-          <q-item clickable v-ripple class="text-grey-6">
-            <q-item-section avatar>
-              <q-icon name="download" />
-            </q-item-section>
-            <q-item-section>WinGet</q-item-section>
-          </q-item>
-
-          <q-item clickable v-ripple class="text-grey-6">
-            <q-item-section avatar>
-              <q-icon name="inventory_2" />
-            </q-item-section>
-            <q-item-section>Chocolatey</q-item-section>
-          </q-item>
-
-          <q-item clickable v-ripple class="text-grey-6">
-            <q-item-section avatar>
-              <q-icon name="notifications" />
-            </q-item-section>
-            <q-item-section>Alerts</q-item-section>
-          </q-item>
-
-          <q-separator dark class="q-my-md opacity-1" />
-
-          <q-item clickable v-ripple to="/login" class="text-negative">
-            <q-item-section avatar>
-              <q-icon name="logout" />
-            </q-item-section>
-            <q-item-section>Logout</q-item-section>
-          </q-item>
-        </q-list>
-
-        <div class="q-pa-md text-center">
-          <div class="text-caption text-grey-7">v3.1.10</div>
-        </div>
-      </div>
-    </q-drawer>
-
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <!-- Standard Bottom Navigation -->
+    <q-footer v-if="auth.isAuthenticated" elevated class="bg-white text-grey-7">
+      <q-tabs
+        v-model="tab"
+        dense
+        class="text-grey-7"
+        active-color="primary"
+        indicator-color="transparent"
+        align="justify"
+        @update:model-value="onTabChange"
+      >
+        <q-tab name="dashboard" icon="dashboard" label="Home" />
+        <q-tab name="agents" icon="devices" label="Agents" />
+        <q-tab name="clients" icon="business" label="Hub" />
+      </q-tabs>
+    </q-footer>
   </q-layout>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
-const leftDrawerOpen = ref(false)
+const tab = ref('dashboard')
 
-function toggleLeftDrawer () {
-  leftDrawerOpen.value = !leftDrawerOpen.value
+watch(() => route.name, (val) => {
+  if (val) tab.value = val as string
+})
+
+function onTabChange(name: string) {
+  if (name === 'dashboard') router.push({ name: 'dashboard' })
+  else if (name === 'agents') router.push({ name: 'agents' })
+  else if (name === 'clients') router.push({ name: 'clients' })
 }
 
 function logout() {
   $q.dialog({
-    title: 'Logout',
-    message: 'Are you sure you want to disconnect from this server?',
+    title: 'Confirm',
+    message: 'Exit secure session?',
     cancel: true,
     persistent: true
   }).onOk(() => {
@@ -141,35 +81,18 @@ function logout() {
 }
 
 onMounted(() => {
-  // Check if we need to redirect on startup
-  if (!auth.isAuthenticated && router.currentRoute.value.name !== 'login') {
+  if (!auth.isAuthenticated && route.name !== 'login') {
     router.push({ name: 'login' })
   }
 })
 </script>
 
 <style>
-.q-page-container {
-  background: #0F172A;
+.q-footer {
+  border-top: 1px solid #e2e8f0;
 }
 
-.opacity-2 {
-  opacity: 0.2;
-}
-
-.opacity-50 { opacity: 0.5; }
-.opacity-70 { opacity: 0.7; }
-.opacity-80 { opacity: 0.8; }
-
-.leading-tight {
-  line-height: 1.1;
-}
-
-.border-top {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.rounded-borders {
-  border-radius: 12px;
+.border-subtle {
+  border: 1px solid #e2e8f0;
 }
 </style>

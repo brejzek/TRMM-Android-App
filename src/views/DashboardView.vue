@@ -1,93 +1,62 @@
 <template>
   <q-page class="q-pa-lg">
-    <div class="row q-col-gutter-lg">
-      <!-- Dynamic Header -->
-      <div class="col-12 q-mb-md">
+    <div class="column q-gutter-y-lg">
+      <!-- Minimalist Header -->
+      <div class="row items-center">
         <div class="column">
-          <div class="text-h4 text-weight-bold tracking-tight">
-            Good <span class="text-primary">{{ timeOfDay }}</span>, Operator
+          <div class="text-h5 text-weight-bold tracking-tight text-slate-900 leading-tight">
+            {{ greeting }}, Chief
           </div>
-          <div class="text-subtitle1 text-grey-5">System status overview for your fleet.</div>
+          <div class="text-caption text-slate-500 q-mt-xs">Fleet Operational Status</div>
+        </div>
+        <q-space />
+        <q-btn flat round dense icon="refresh" color="grey-6" :loading="loading" @click="agentStore.fetchAgents" />
+      </div>
+
+      <!-- High-Level Health Grid -->
+      <div class="row q-col-gutter-md">
+        <div class="col-6">
+          <q-card class="standard-card q-pa-md text-center" flat>
+            <div class="text-caption text-slate-500 uppercase tracking-widest q-mb-xs">Healthy</div>
+            <div class="text-h4 text-weight-bold text-emerald-600">{{ onlineCount }}</div>
+          </q-card>
+        </div>
+        <div class="col-6">
+          <q-card class="standard-card q-pa-md text-center" flat>
+            <div class="text-caption text-slate-500 uppercase tracking-widest q-mb-xs">Warning</div>
+            <div class="text-h4 text-weight-bold text-amber-600">{{ overdueCount }}</div>
+          </q-card>
+        </div>
+        <div class="col-6">
+          <q-card class="standard-card q-pa-md text-center" flat>
+            <div class="text-caption text-slate-500 uppercase tracking-widest q-mb-xs">Critical</div>
+            <div class="text-h4 text-weight-bold text-rose-600">{{ offlineCount }}</div>
+          </q-card>
+        </div>
+        <div class="col-6">
+          <q-card class="standard-card q-pa-md text-center" flat>
+            <div class="text-caption text-slate-500 uppercase tracking-widest q-mb-xs">Total</div>
+            <div class="text-h4 text-weight-bold text-slate-900">{{ agents.length }}</div>
+          </q-card>
         </div>
       </div>
 
-      <!-- Hero Stats -->
-      <div class="col-12 col-md-4">
-        <q-card flat class="glass-card full-height overflow-hidden">
-          <q-card-section class="q-pa-lg">
-            <div class="row items-center no-wrap">
-              <div class="col">
-                <div class="text-overline text-primary">Fleet Scale</div>
-                <div class="text-h3 text-weight-bolder">{{ agentStore.agents.length }}</div>
-                <div class="text-caption text-grey-6">Managed Endpoints</div>
-              </div>
-              <q-icon name="hub" size="64px" class="opacity-1 text-primary" />
-            </div>
-          </q-card-section>
-          <div class="absolute-bottom bg-primary opacity-2" style="height: 4px"></div>
-        </q-card>
-      </div>
-
-      <div class="col-6 col-md-4">
-        <q-card flat class="glass-card full-height overflow-hidden">
-          <q-card-section class="q-pa-lg">
-            <div class="row items-center no-wrap">
-              <div class="col">
-                <div class="text-overline text-positive">Live Status</div>
-                <div class="text-h3 text-weight-bold text-positive">{{ onlineCount }}</div>
-                <div class="text-caption text-grey-6">Online Now</div>
-              </div>
-              <q-icon name="sensors" size="64px" class="opacity-1 text-positive pulse-emerald" />
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <div class="col-6 col-md-4">
-        <q-card flat class="glass-card full-height overflow-hidden">
-          <q-card-section class="q-pa-lg">
-            <div class="row items-center no-wrap">
-              <div class="col">
-                <div class="text-overline text-negative">Critical</div>
-                <div class="text-h3 text-weight-bold text-negative">{{ offlineCount }}</div>
-                <div class="text-caption text-grey-6">Offline / Unreachable</div>
-              </div>
-              <q-icon name="warning" size="64px" class="opacity-1 text-negative" />
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <!-- Recent Activity Feed -->
-      <div class="col-12 q-mt-xl">
-        <div class="row items-center q-mb-md">
-          <q-icon name="history" size="sm" class="text-grey-5 q-mr-sm" />
-          <div class="text-h5 text-weight-bold">Recent Pulse</div>
-          <q-space />
-          <q-btn flat dense color="primary" label="View All" @click="router.push('/agents')" />
-        </div>
-
-        <q-list class="glass-card q-pa-sm overflow-hidden">
-          <q-item v-for="agent in recentAgents" :key="agent.id" clickable v-ripple @click="router.push({ name: 'agent-details', params: { id: agent.id }})" class="q-my-xs rounded-borders">
+      <!-- Simple Activity Feed -->
+      <div class="column q-gutter-y-sm">
+        <div class="text-overline text-slate-400">Recent Pulse</div>
+        <q-card v-for="agent in recentAgents" :key="agent.id" class="standard-card q-pa-sm" flat @click="router.push({ name: 'agent-details', params: { id: agent.id }})">
+          <q-item clickable>
             <q-item-section avatar>
-              <div class="status-dot-container">
-                <div :class="['status-dot', agent.status === 'online' ? 'bg-positive pulse-emerald' : 'bg-negative']"></div>
-              </div>
+              <div 
+                :style="{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: getStatusColor(agent.status) }"
+              ></div>
             </q-item-section>
-            
             <q-item-section>
-              <q-item-label class="text-weight-bold text-white">{{ agent.hostname }}</q-item-label>
-              <q-item-label caption class="text-grey-5">{{ agent.client_name }} > {{ agent.site_name }}</q-item-label>
-            </q-item-section>
-            
-            <q-item-section side>
-              <div class="column items-end">
-                <div class="text-caption text-grey-6">{{ agent.operating_system }}</div>
-                <q-icon :name="agent.status === 'online' ? 'check_circle' : 'error'" :color="agent.status === 'online' ? 'positive' : 'negative'" size="xs" />
-              </div>
+              <q-item-label class="text-weight-semi text-slate-800">{{ agent.hostname }}</q-item-label>
+              <q-item-label caption class="text-slate-500">Checked in {{ agent.last_seen }}</q-item-label>
             </q-item-section>
           </q-item>
-        </q-list>
+        </q-card>
       </div>
     </div>
   </q-page>
@@ -100,17 +69,34 @@ import { useAgentStore } from '../stores/agents'
 
 const router = useRouter()
 const agentStore = useAgentStore()
+const agents = computed(() => agentStore.agents)
+const loading = computed(() => agentStore.loading)
 
-const onlineCount = computed(() => agentStore.agents.filter(a => a.status === 'online').length)
-const offlineCount = computed(() => agentStore.agents.filter(a => a.status === 'offline').length)
-const recentAgents = computed(() => agentStore.agents.slice(0, 8))
+const onlineCount = computed(() => agents.value.filter(a => a.status === 'online').length)
+const offlineCount = computed(() => agents.value.filter(a => a.status === 'offline').length)
+const overdueCount = computed(() => agents.value.filter(a => a.status === 'overdue').length)
 
-const timeOfDay = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Morning'
-  if (hour < 18) return 'Afternoon'
-  return 'Evening'
+const recentAgents = computed(() => {
+  return [...agents.value]
+    .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())
+    .slice(0, 5)
 })
+
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good Morning'
+  if (hour < 18) return 'Good Afternoon'
+  return 'Good Evening'
+})
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'online': return '#10b981'
+    case 'offline': return '#ef4444'
+    case 'overdue': return '#f59e0b'
+    default: return '#94a3b8'
+  }
+}
 
 onMounted(() => {
   agentStore.fetchAgents()
@@ -118,33 +104,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.tracking-tight {
-  letter-spacing: -0.025em;
-}
+.leading-tight { line-height: 1.25; }
+.tracking-widest { letter-spacing: 0.1em; }
+.uppercase { text-transform: uppercase; }
 
-.opacity-1 {
-  opacity: 0.1;
-}
-
-.opacity-2 {
-  opacity: 0.2;
-}
-
-.status-dot-container {
-  width: 12px;
-  height: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.rounded-borders {
-  border-radius: 12px;
-}
+.text-emerald-600 { color: #059669; }
+.text-amber-600 { color: #d97706; }
+.text-rose-600 { color: #e11d48; }
+.text-slate-900 { color: #0f172a; }
+.text-slate-800 { color: #1e293b; }
+.text-slate-500 { color: #64748b; }
+.text-slate-400 { color: #94a3b8; }
 </style>

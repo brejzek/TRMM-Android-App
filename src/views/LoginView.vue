@@ -1,60 +1,60 @@
 <template>
-  <q-page class="flex flex-center bg-grey-1">
-    <q-card class="login-card" flat bordered>
-      <q-card-section class="text-center">
-        <div class="text-h5 text-primary text-weight-bold">TacticalRMM</div>
-        <div class="text-caption text-grey-7">Enter your server details to connect</div>
-      </q-card-section>
+  <q-page class="flex flex-center bg-slate-50">
+    <div class="login-container">
+      <div class="text-center q-mb-xl">
+        <div class="text-h4 text-weight-bolder tracking-tight text-slate-900">
+          Tactical<span class="text-primary">RMM</span>
+        </div>
+        <div class="text-subtitle1 text-slate-500 q-mt-sm">Command Center Mobile</div>
+      </div>
 
-      <q-card-section>
-        <q-form @submit="onSubmit" class="q-gutter-md">
-          <q-input
-            v-model="apiUrl"
-            label="Server URL"
-            placeholder="https://api.example.com"
-            hint="The URL of your TacticalRMM API"
-            lazy-rules
-            :rules="[ val => val && val.length > 0 || 'Please enter your API URL']"
-            filled
-          >
-            <template v-slot:prepend>
-              <q-icon name="dns" />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model="apiKey"
-            label="API Key"
-            placeholder="Your API Key"
-            hint="Generate in Global Settings > API Keys"
-            type="password"
-            lazy-rules
-            :rules="[ val => val && val.length > 0 || 'Please enter your API Key']"
-            filled
-          >
-            <template v-slot:prepend>
-              <q-icon name="vpn_key" />
-            </template>
-          </q-input>
-
-          <div class="q-mt-xl">
-            <q-btn
-              label="Connect"
-              type="submit"
+      <q-card class="standard-card q-pa-lg" flat>
+        <q-card-section>
+          <q-form @submit="onSubmit" class="q-gutter-y-md">
+            <q-input
+              v-model="apiUrl"
+              label="API Endpoint"
+              placeholder="https://api.yourdomain.com"
+              stack-label
+              outlined
+              dense
               color="primary"
-              class="full-width"
-              rounded
-              unelevated
-              :loading="loading"
+              lazy-rules
+              :rules="[ val => val && val.length > 0 || 'Required']"
             />
-          </div>
-        </q-form>
-      </q-card-section>
 
-      <q-card-section class="text-center text-caption text-grey-6">
-        This app is an unofficial client for TacticalRMM.
-      </q-card-section>
-    </q-card>
+            <q-input
+              v-model="apiKey"
+              label="Access Token"
+              placeholder="Your API Key"
+              stack-label
+              outlined
+              dense
+              color="primary"
+              type="password"
+              lazy-rules
+              :rules="[ val => val && val.length > 0 || 'Required']"
+            />
+
+            <div class="q-mt-lg">
+              <q-btn
+                label="Connect"
+                type="submit"
+                color="primary"
+                unelevated
+                class="full-width"
+                style="border-radius: 8px; height: 44px;"
+                :loading="loading"
+              />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+
+      <div class="text-center q-mt-xl text-caption text-slate-400">
+        v3.1.10 | Secure Terminal
+      </div>
+    </div>
   </q-page>
 </template>
 
@@ -74,27 +74,22 @@ const loading = ref(false)
 
 async function onSubmit() {
   loading.value = true
-  
   try {
-    // Basic URL validation
     if (!apiUrl.value.startsWith('http')) {
-      throw new Error('URL must start with http:// or https://')
+      throw new Error('Invalid Endpoint URL')
     }
-
-    // Save credentials
     auth.setCredentials(apiUrl.value, apiKey.value)
-    
     $q.notify({
-      type: 'positive',
-      message: 'Connected successfully!',
-      position: 'top'
+      message: 'Connected',
+      color: 'primary',
+      position: 'top',
+      timeout: 1000
     })
-
     router.push({ name: 'dashboard' })
   } catch (error: any) {
     $q.notify({
       type: 'negative',
-      message: error.message || 'Failed to connect',
+      message: error.message || 'Connection Failure',
       position: 'top'
     })
   } finally {
@@ -104,10 +99,13 @@ async function onSubmit() {
 </script>
 
 <style scoped>
-.login-card {
-  width: 100%;
-  max-width: 400px;
-  padding: 10px;
-  border-radius: 12px;
+.login-container {
+  width: 90%;
+  max-width: 380px;
 }
+
+.bg-slate-50 { background-color: #f8fafc; }
+.text-slate-900 { color: #0f172a; }
+.text-slate-500 { color: #64748b; }
+.text-slate-400 { color: #94a3b8; }
 </style>

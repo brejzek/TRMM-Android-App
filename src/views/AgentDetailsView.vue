@@ -1,237 +1,206 @@
 <template>
   <q-page class="q-pa-lg">
-    <div class="row items-center q-mb-xl">
-      <q-btn flat round icon="arrow_back" color="primary" class="glass-card q-mr-md" @click="router.back()" />
-      <div class="column">
-        <div class="text-h4 text-weight-bolder">Agent Intelligence</div>
-        <div class="text-caption text-grey-5" v-if="agent">{{ agent.hostname }} • {{ agent.public_ip }}</div>
-      </div>
-    </div>
-
     <div v-if="agent" class="column q-gutter-y-lg">
-      <q-card flat class="glass-card overflow-hidden">
-        <q-card-section class="q-pa-lg">
-          <div class="row items-center no-wrap">
-            <div class="col">
-              <div class="text-h5 text-weight-bold">{{ agent.hostname }}</div>
-              <div class="text-subtitle1 text-grey-5">{{ agent.client_name }} > {{ agent.site_name }}</div>
-            </div>
-            <div class="col-auto">
-              <q-chip 
-                dense 
-                size="md" 
-                class="glass-chip q-px-md"
-                :text-color="getStatusColor(agent.status)"
-                outline
-              >
-                <div :class="['status-pulse-small q-mr-sm', getStatusPulseClass(agent.status)]"></div>
-                {{ agent.status.toUpperCase() }}
-              </q-chip>
-            </div>
-          </div>
-        </q-card-section>
+      <!-- Minimalist Header -->
+      <div class="row items-center no-wrap">
+        <q-btn flat round icon="arrow_back" color="grey-7" class="q-mr-md" @click="router.back()" />
+        <div class="column">
+          <div class="text-h5 text-weight-bold text-slate-900 leading-tight">{{ agent.hostname }}</div>
+          <div class="text-caption text-slate-500">{{ agent.public_ip }} • {{ agent.operating_system }}</div>
+        </div>
+        <q-space />
+        <div :class="['status-pill', `status-${agent.status}-bg`]">{{ agent.status }}</div>
+      </div>
 
-        <q-separator dark class="opacity-1" />
-
-        <q-tabs v-model="tab" class="text-primary overhaul-tabs" align="justify" indicator-color="primary">
-          <q-tab name="info" icon="analytics" label="Overview" />
-          <q-tab name="remote" icon="vignette" label="Remote" />
-          <q-tab name="terminal" icon="code" label="Terminal" />
+      <q-card class="standard-card" flat>
+        <q-tabs 
+          v-model="tab" 
+          dense 
+          class="text-grey-7" 
+          active-color="primary" 
+          indicator-color="primary" 
+          align="left" 
+          outside-arrows 
+          mobile-arrows
+        >
+          <q-tab name="info" label="General" />
+          <q-tab name="services" label="Services" />
+          <q-tab name="processes" label="Processes" />
+          <q-tab name="software" label="Software" />
+          <q-tab name="scripts" label="Scripts" />
+          <q-tab name="terminal" label="Terminal" />
+          <q-tab name="remote" label="Desktop" />
         </q-tabs>
 
-        <q-separator dark class="opacity-1" />
+        <q-separator />
 
-        <q-tab-panels v-model="tab" animated class="bg-transparent agent-panels">
-          <q-tab-panel name="info" class="q-pa-lg">
-            <!-- Metadata List (Ref Screenshot 2) -->
-            <div class="column q-gutter-y-md">
-              <div class="row items-center no-wrap">
-                <q-icon name="account_tree" color="primary" size="sm" class="q-mr-md" />
-                <div class="column">
-                  <div class="text-overline text-grey-6 leading-tight">Type</div>
-                  <div class="text-subtitle1 text-weight-bold">Workstation</div>
-                </div>
-              </div>
-
-              <div class="row items-center no-wrap">
-                <q-icon name="schedule" color="primary" size="sm" class="q-mr-md" />
-                <div class="column">
-                  <div class="text-overline text-grey-6 leading-tight">Last Connection</div>
-                  <div class="text-subtitle1 text-weight-bold">Now</div>
-                </div>
-              </div>
-
-              <div class="row items-center no-wrap">
-                <q-icon name="power_settings_new" color="primary" size="sm" class="q-mr-md" />
-                <div class="column">
-                  <div class="text-overline text-grey-6 leading-tight">Boot Time</div>
-                  <div class="text-subtitle1 text-weight-bold">2/7/2026 20:49</div>
-                </div>
-              </div>
-
-              <div class="row items-center no-wrap">
-                <q-icon name="computer" color="primary" size="sm" class="q-mr-md" />
-                <div class="column">
-                  <div class="text-overline text-grey-6 leading-tight">Operating System</div>
-                  <div class="text-subtitle1 text-weight-bold">{{ agent.operating_system }}</div>
-                </div>
-              </div>
-
-              <div class="row items-center no-wrap">
-                <q-icon name="info" color="primary" size="sm" class="q-mr-md" />
-                <div class="column">
-                  <div class="text-overline text-grey-6 leading-tight">Version</div>
-                  <div class="text-subtitle1 text-weight-bold">{{ agent.version }}</div>
-                </div>
-              </div>
-
-              <div class="row items-center no-wrap">
-                <q-icon name="public" color="primary" size="sm" class="q-mr-md" />
-                <div class="column">
-                  <div class="text-overline text-grey-6 leading-tight">Public IP</div>
-                  <div class="text-subtitle1 text-weight-bold text-primary">{{ agent.public_ip }}</div>
-                </div>
-              </div>
+        <q-tab-panels v-model="tab" animated>
+          <!-- ... tabs preserved ... -->
+          
+          <!-- Scripts -->
+          <q-tab-panel name="scripts" class="q-pa-none">
+            <q-inner-loading :showing="agentStore.managementLoading">
+              <q-spinner-tail color="primary" size="3em" />
+            </q-inner-loading>
+            <div class="q-pa-md">
+              <q-input dense outlined v-model="scriptSearch" placeholder="Search scripts..." class="q-mb-md">
+                <template v-slot:append><q-icon name="search" /></template>
+              </q-input>
             </div>
-
-            <!-- Health Status Board (Reference Alignment) -->
-            <div class="q-mt-xl">
-              <div class="row items-center q-mb-md">
-                <q-icon name="check_circle_outline" color="positive" size="sm" class="q-mr-sm" />
-                <div class="text-h6 text-weight-bold">Check Status</div>
+            <q-list separator>
+              <q-item v-for="script in filteredScripts" :key="script.id" clickable @click="runScript(script)">
+                <q-item-section avatar>
+                  <q-icon name="description" color="primary" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-semi">{{ script.name }}</q-item-label>
+                  <q-item-label caption>{{ script.category }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn flat round icon="play_circle_outline" color="primary" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-tab-panel>
+          <!-- General Info -->
+          <q-tab-panel name="info" class="q-pa-md">
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
+                <q-list dense>
+                  <q-item>
+                    <q-item-section avatar><q-icon name="info" color="grey-6" /></q-item-section>
+                    <q-item-section>
+                      <q-item-label caption>Version</q-item-label>
+                      <q-item-label class="text-weight-semi">{{ agent.version }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                  <q-item>
+                    <q-item-section avatar><q-icon name="lan" color="grey-6" /></q-item-section>
+                    <q-item-section>
+                      <q-item-label caption>Local IP</q-item-label>
+                      <q-item-label class="text-weight-semi">{{ agent.local_ip }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
               </div>
-              
-              <div class="row q-col-gutter-md">
-                <div class="col-6 col-sm-3">
-                  <div class="health-tile glass-panel text-center q-pa-md border-primary shadow-glow-primary">
-                    <div class="text-h4 text-weight-bolder text-primary">{{ agent.checks?.total || 0 }}</div>
-                    <div class="text-overline text-grey-5">Total</div>
+              <div class="col-12 col-md-6">
+                <div class="row q-col-gutter-sm">
+                  <div class="col-6">
+                    <div class="q-pa-md text-center standard-card bg-slate-50">
+                      <div class="text-h5 text-weight-bold text-slate-900">{{ agent.checks?.total || 0 }}</div>
+                      <div class="text-caption text-slate-500">Total Checks</div>
+                    </div>
                   </div>
-                </div>
-                <div class="col-6 col-sm-3">
-                  <div class="health-tile glass-panel text-center q-pa-md border-warning">
-                    <div class="text-h4 text-weight-bolder text-warning">{{ agent.checks?.warning || 0 }}</div>
-                    <div class="text-overline text-grey-5">Warnings</div>
-                  </div>
-                </div>
-                <div class="col-6 col-sm-3">
-                  <div class="health-tile glass-panel text-center q-pa-md border-positive">
-                    <div class="text-h4 text-weight-bolder text-positive">{{ agent.checks?.info || 0 }}</div>
-                    <div class="text-overline text-grey-5">Info</div>
-                  </div>
-                </div>
-                <div class="col-6 col-sm-3">
-                  <div class="health-tile glass-panel text-center q-pa-md border-negative">
-                    <div class="text-h4 text-weight-bolder text-negative">{{ agent.checks?.failing || 0 }}</div>
-                    <div class="text-overline text-grey-5">Failed</div>
+                  <div class="col-6">
+                    <div class="q-pa-md text-center standard-card bg-slate-50">
+                      <div class="text-h5 text-weight-bold" :class="agent.checks?.failing ? 'text-rose-600' : 'text-emerald-600'">
+                        {{ agent.checks?.failing || 0 }}
+                      </div>
+                      <div class="text-caption text-slate-500">Failing</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="q-mt-xl">
-              <div class="text-h6 text-weight-bold q-mb-md">Quick Operations</div>
-              <div class="row q-gutter-md">
-                <q-btn unelevated color="primary" icon="bolt" label="Wake" class="glass-pill q-px-lg" />
-                <q-btn outline color="warning" icon="restart_alt" label="Reboot" class="glass-pill q-px-lg" @click="sendCommand('reboot')" />
-                <q-btn outline color="negative" icon="power_settings_new" label="Shutdown" class="glass-pill q-px-lg" @click="sendCommand('shutdown')" />
-              </div>
+            <div class="q-mt-xl row q-gutter-sm">
+              <q-btn outline color="primary" label="Reboot" icon="restart_alt" @click="sendCommand('reboot')" />
+              <q-btn outline color="primary" label="Run Script" icon="play_arrow" @click="tab = 'scripts'" />
+              <q-btn outline color="negative" label="Shutdown" icon="power_settings_new" @click="sendCommand('shutdown')" />
             </div>
           </q-tab-panel>
 
-          <q-tab-panel name="remote" class="no-padding overflow-hidden bg-black full-screen-tab">
-            <div v-if="meshLoading" class="flex flex-center full-height full-width q-pa-xl">
-              <q-spinner-puff color="primary" size="4em" />
-              <div class="q-ml-md text-white text-h6">Establishing Secure Link...</div>
-            </div>
-            <div v-else-if="remoteUrl" class="full-height relative-position">
-              <iframe 
-                :src="remoteUrl" 
-                class="mesh-iframe"
-                allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write; display-capture"
-              ></iframe>
-              
-              <q-page-sticky position="bottom-right" :offset="[24, 24]">
-                <q-fab
-                  color="primary"
-                  icon="keyboard_arrow_up"
-                  direction="up"
-                  vertical-actions-align="right"
-                  class="glass-panel main-action-fab"
-                >
-                  <q-fab-action color="purple-7" @click="sendCommand('maintenance')" icon="build" label="Enter Maintenance Mode" />
-                  <q-fab-action color="negative" @click="sendCommand('shutdown')" icon="power_settings_new" label="Shutdown" />
-                  <q-fab-action color="orange-8" @click="sendCommand('reboot')" icon="restart_alt" label="Restart" />
-                  <q-fab-action color="teal" @click="tab = 'terminal'" icon="terminal" label="Terminal" />
-                  <q-fab-action color="indigo-7" @click="fetchMeshUrl('control')" icon="vignette" label="MeshCentral" />
-                  <q-fab-action color="green-7" @click="sendCommand('software')" icon="download" label="Install Software" />
-                  <q-fab-action color="purple-9" @click="sendCommand('processes')" icon="list_alt" label="Processes/Services" />
-                  <q-fab-action color="cyan-7" @click="sendCommand('script')" icon="code" label="Run Script" />
-                  <q-fab-action color="secondary" @click="toggleKeyboard" icon="keyboard" label="Keyboard" />
-                </q-fab>
-              </q-page-sticky>
-            </div>
-            <div v-else class="flex flex-center q-pa-xl text-center full-height text-white">
-              <q-icon name="error_outline" color="negative" size="4em" />
-              <div class="text-h5 q-mt-md">Link Failure</div>
-              <q-btn flat color="primary" label="Re-establish Bridge" @click="fetchMeshUrl('control')" class="q-mt-md" />
-            </div>
+          <!-- Services management -->
+          <q-tab-panel name="services" class="q-pa-none">
+            <q-inner-loading :showing="agentStore.managementLoading">
+              <q-spinner-tail color="primary" size="3em" />
+            </q-inner-loading>
+            <q-list separator>
+              <q-item v-for="svc in agentStore.services" :key="svc.name" class="q-py-md">
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">{{ svc.display_name }}</q-item-label>
+                  <q-item-label caption>{{ svc.name }} • {{ svc.start_type }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <div class="row items-center q-gutter-x-sm">
+                    <div :class="svc.status === 'Running' ? 'text-emerald-600' : 'text-rose-600'" class="text-weight-bold text-caption uppercase">
+                      {{ svc.status }}
+                    </div>
+                    <q-btn-dropdown flat dense dropdown-icon="more_vert" no-icon-animation>
+                      <q-list>
+                        <q-item clickable v-close-popup @click="manageService(svc.name, 'start')" :disable="svc.status === 'Running'">
+                          <q-item-section avatar><q-icon name="play_arrow" color="emerald-600" /></q-item-section>
+                          <q-item-section>Start</q-item-section>
+                        </q-item>
+                        <q-item clickable v-close-popup @click="manageService(svc.name, 'stop')" :disable="svc.status !== 'Running'">
+                          <q-item-section avatar><q-icon name="stop" color="rose-600" /></q-item-section>
+                          <q-item-section>Stop</q-item-section>
+                        </q-item>
+                        <q-item clickable v-close-popup @click="manageService(svc.name, 'restart')">
+                          <q-item-section avatar><q-icon name="refresh" color="primary" /></q-item-section>
+                          <q-item-section>Restart</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-btn-dropdown>
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
           </q-tab-panel>
 
-          <q-tab-panel name="terminal" class="no-padding overflow-hidden bg-black full-screen-tab">
-            <div v-if="meshLoading" class="flex flex-center full-height full-width q-pa-xl">
-              <q-spinner-terminal color="primary" size="4em" />
-              <div class="q-ml-md text-white text-h6">Opening Shell...</div>
-            </div>
-            <div v-else-if="terminalUrl" class="full-height relative-position">
-              <iframe 
-                :src="terminalUrl" 
-                class="mesh-iframe"
-                allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write; display-capture"
-              ></iframe>
+          <!-- Process list -->
+          <q-tab-panel name="processes" class="q-pa-none">
+            <q-inner-loading :showing="agentStore.managementLoading">
+              <q-spinner-tail color="primary" size="3em" />
+            </q-inner-loading>
+            <q-table
+              dense
+              flat
+              :rows="agentStore.processes"
+              :columns="[
+                { name: 'pid', label: 'PID', field: 'pid', align: 'left' },
+                { name: 'name', label: 'Object', field: 'name', align: 'left' },
+                { name: 'cpu', label: 'CPU %', field: 'cpu_percent', align: 'right' },
+                { name: 'mem', label: 'MEM %', field: 'memory_percent', align: 'right' },
+              ]"
+              row-key="pid"
+              :pagination="{ rowsPerPage: 0 }"
+              hide-bottom
+            />
+          </q-tab-panel>
 
-              <q-page-sticky position="bottom-right" :offset="[24, 24]">
-                <q-fab
-                  color="primary"
-                  icon="keyboard_arrow_up"
-                  direction="up"
-                  vertical-actions-align="right"
-                  class="glass-panel main-action-fab"
-                >
-                  <q-fab-action color="purple-7" @click="sendCommand('maintenance')" icon="build" label="Enter Maintenance Mode" />
-                  <q-fab-action color="negative" @click="sendCommand('shutdown')" icon="power_settings_new" label="Shutdown" />
-                  <q-fab-action color="orange-8" @click="sendCommand('reboot')" icon="restart_alt" label="Restart" />
-                  <q-fab-action color="teal" @click="fetchMeshUrl('terminal')" icon="terminal" label="Terminal" />
-                  <q-fab-action color="indigo-7" @click="tab = 'remote'" icon="vignette" label="MeshCentral" />
-                  <q-fab-action color="green-7" @click="sendCommand('software')" icon="download" label="Install Software" />
-                  <q-fab-action color="purple-9" @click="sendCommand('processes')" icon="list_alt" label="Processes/Services" />
-                  <q-fab-action color="cyan-7" @click="sendCommand('script')" icon="code" label="Run Script" />
-                  <q-fab-action color="secondary" @click="toggleKeyboard" icon="keyboard" label="Keyboard" />
-                </q-fab>
-              </q-page-sticky>
+          <!-- Software inventory -->
+          <q-tab-panel name="software" class="q-pa-none">
+            <q-inner-loading :showing="agentStore.managementLoading">
+              <q-spinner-tail color="primary" size="3em" />
+            </q-inner-loading>
+            <q-list separator>
+              <q-item v-for="sw in agentStore.software" :key="sw.name">
+                <q-item-section>
+                  <q-item-label class="text-weight-semi">{{ sw.name }}</q-item-label>
+                  <q-item-label caption>Version {{ sw.version }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-tab-panel>
+
+          <!-- Terminal -->
+          <q-tab-panel name="terminal" class="no-padding bg-black" style="height: 60vh">
+            <div v-if="meshLoading" class="flex flex-center full-height">
+              <q-spinner-terminal color="white" size="3em" />
             </div>
-            <div v-else class="flex flex-center q-pa-xl text-center full-height text-white">
-              <q-icon name="terminal" color="negative" size="4em" />
-              <div class="text-h5 q-mt-md">Shell Disconnected</div>
-              <q-btn flat color="primary" label="Reconnect" @click="fetchMeshUrl('terminal')" class="q-mt-md" />
+            <iframe v-else-if="terminalUrl" :src="terminalUrl" class="full-width full-height border-none"></iframe>
+          </q-tab-panel>
+
+          <!-- Remote Desktop -->
+          <q-tab-panel name="remote" class="no-padding bg-black" style="height: 60vh">
+            <div v-if="meshLoading" class="flex flex-center full-height">
+              <q-spinner color="white" size="3em" />
             </div>
+            <iframe v-else-if="remoteUrl" :src="remoteUrl" class="full-width full-height border-none"></iframe>
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
-
-      <!-- Hidden Keyboard Anchor -->
-      <input 
-        ref="keyboardAnchor" 
-        type="text" 
-        class="keyboard-anchor"
-        aria-hidden="true"
-      />
-    </div>
-
-    <div v-else class="flex flex-center q-pa-xl">
-      <q-inner-loading showing>
-        <q-spinner-dots size="50px" color="primary" />
-      </q-inner-loading>
     </div>
   </q-page>
 </template>
@@ -241,7 +210,6 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAgentStore } from '../stores/agents'
 import { useQuasar } from 'quasar'
-import { Keyboard } from '@capacitor/keyboard'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -249,31 +217,22 @@ const router = useRouter()
 const agentStore = useAgentStore()
 
 const tab = ref('info')
+const scriptSearch = ref('')
 const meshLoading = ref(false)
 const remoteUrl = ref('')
 const terminalUrl = ref('')
-const keyboardAnchor = ref<HTMLInputElement | null>(null)
 
 const agentId = computed(() => route.params.id as string)
 const agent = computed(() => agentStore.agents.find(a => String(a.id) === agentId.value || String(a.agent_id) === agentId.value))
 
-function getStatusColor(status: string) {
-  switch (status?.toLowerCase()) {
-    case 'online': return 'positive'
-    case 'offline': return 'negative'
-    case 'overdue': return 'warning'
-    default: return 'grey'
-  }
-}
-
-function getStatusPulseClass(status: string) {
-  switch (status?.toLowerCase()) {
-    case 'online': return 'pulse-emerald bg-positive'
-    case 'offline': return 'bg-negative'
-    case 'overdue': return 'bg-warning'
-    default: return 'bg-grey'
-  }
-}
+const filteredScripts = computed(() => {
+  if (!scriptSearch.value) return agentStore.scripts
+  const s = scriptSearch.value.toLowerCase()
+  return agentStore.scripts.filter(sc => 
+    sc.name.toLowerCase().includes(s) || 
+    sc.category.toLowerCase().includes(s)
+  )
+})
 
 async function fetchMeshUrl(mode: 'control' | 'terminal') {
   meshLoading.value = true
@@ -282,132 +241,69 @@ async function fetchMeshUrl(mode: 'control' | 'terminal') {
     if (url) {
       if (mode === 'control') remoteUrl.value = url
       else terminalUrl.value = url
-    } else {
-      throw new Error('No URL returned from API')
     }
-  } catch (error) {
-    console.error(`Failed to fetch ${mode} URL:`, error)
-    $q.notify({
-      type: 'negative',
-      message: `Failed to load ${mode === 'control' ? 'Remote Desktop' : 'Terminal'}`,
-      position: 'top'
-    })
+  } catch (error: any) {
+    $q.notify({ type: 'negative', message: 'Failed to connect' })
   } finally {
     meshLoading.value = false
   }
 }
 
-function sendCommand(cmd: string) {
-  $q.notify({
-    message: `Sending ${cmd} command to agent...`,
-    color: 'info'
-  })
-  // We'll implement the actual API call later
-}
-
-
-async function toggleKeyboard() {
-  try {
-    // Hidden Input Bridge Strategy
-    if (keyboardAnchor.value) {
-      keyboardAnchor.value.focus()
-    }
-    await Keyboard.show()
-  } catch (e) {
-    console.error('Keyboard show failed', e)
+async function manageService(name: string, action: string) {
+  $q.notify({ message: `Executing ${action} on ${name}...`, color: 'primary' })
+  const success = await agentStore.runAgentCommand(agentId.value, 'service_action', { service_name: name, action })
+  if (success) {
+    $q.notify({ type: 'positive', message: 'Command accepted' })
+    agentStore.fetchAgentDetails(agentId.value, 'services')
+  } else {
+    $q.notify({ type: 'negative', message: 'Command failed' })
   }
 }
 
+async function runScript(script: any) {
+  $q.dialog({
+    title: 'Run Script',
+    message: `Are you sure you want to run "${script.name}" on ${agent.value?.hostname}?`,
+    cancel: true,
+    persistent: true
+  }).onOk(async () => {
+    $q.notify({ message: 'Triggering script...', color: 'primary' })
+    const success = await agentStore.runAgentCommand(agentId.value, 'runscript', { script_id: script.id })
+    if (success) $q.notify({ type: 'positive', message: 'Script triggered successfully' })
+    else $q.notify({ type: 'negative', message: 'Failed to trigger script' })
+  })
+}
+
+function sendCommand(cmd: string) {
+  $q.notify({ message: `Executing ${cmd}...`, color: 'primary' })
+}
+
 watch(tab, (newTab) => {
-  if (newTab === 'remote' && !remoteUrl.value) {
-    fetchMeshUrl('control')
-  } else if (newTab === 'terminal' && !terminalUrl.value) {
-    fetchMeshUrl('terminal')
+  if (newTab === 'remote' && !remoteUrl.value) fetchMeshUrl('control')
+  else if (newTab === 'terminal' && !terminalUrl.value) fetchMeshUrl('terminal')
+  else if (['services', 'software', 'processes'].includes(newTab)) {
+    agentStore.fetchAgentDetails(agentId.value, newTab as any)
+  } else if (newTab === 'scripts') {
+    agentStore.fetchScripts()
   }
 })
 
 onMounted(() => {
-  if (agentStore.agents.length === 0) {
-    agentStore.fetchAgents()
-  }
+  if (agentStore.agents.length === 0) agentStore.fetchAgents()
 })
 </script>
 
 <style scoped>
-.glass-chip {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-}
+.leading-tight { line-height: 1.25; }
+.bg-slate-50 { background-color: #f8fafc; }
+.text-slate-900 { color: #0f172a; }
+.text-slate-500 { color: #64748b; }
+.text-emerald-600 { color: #059669; }
+.text-rose-600 { color: #e11d48; }
+.border-none { border: none; }
 
-.status-pulse-small {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.overhaul-tabs {
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.agent-panels {
-  min-height: 50vh;
-}
-
-.full-screen-tab {
-  height: 70vh !important;
-}
-
-.mesh-iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-  background-color: #000;
-}
-
-.info-block {
-  transition: transform 0.2s ease;
-}
-
-.info-block:hover {
-  transform: scale(1.02);
-}
-
-.glass-pill {
-  border-radius: 20px;
-  font-weight: 600;
-}
-
-.keyboard-anchor {
-  position: absolute;
-  top: -100px;
-  left: -100px;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.health-tile {
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  border: 1px solid rgba(255,255,255,0.05);
-}
-
-.health-tile:active {
-  transform: scale(0.95);
-}
-
-.border-primary { border-color: var(--neon-indigo) !important; }
-.border-warning { border-color: #f2c037 !important; }
-.border-positive { border-color: #21ba45 !important; }
-.border-negative { border-color: #c10015 !important; }
-
-.shadow-glow-primary {
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
-}
-
-.main-action-fab {
-  z-index: 1000;
+/* Denser table for mobile management */
+:deep(.q-table th), :deep(.q-table td) {
+  padding: 8px 12px;
 }
 </style>

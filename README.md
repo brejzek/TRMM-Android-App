@@ -14,7 +14,7 @@ A powerful, high-fidelity mobile companion for [TacticalRMM](https://tacticalrmm
 - **🐚 Remote Terminal**: Execute commands and manage systems via a secure, built-in shell.
 - **📊 Health Overview**: Quick view of failing checks, warnings, and system health metrics at a glance.
 - **📂 Client & Site Organization**: Intuitively navigate your infrastructure with agents grouped by Client and Site.
-- **✨ Premium UI/UX**: Experience a sleek, dark-themed interface with glassmorphic elements and smooth micro-animations.
+- **✨ Clean Minimalist UI**: Experience a professional, high-density interface focused on clarity and ease of use.
 
 ## 🛠️ Technology Stack
 
