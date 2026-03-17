@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> **Disclaimer**: This project is 100% AI Generated.
+> **Disclaimer**: This project is 100% AI Generated. **IOS Version coming soon**
 
 # TacticalRMM Mobile (TRMM-Android-App)
 
