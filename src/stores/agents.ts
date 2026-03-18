@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { CapacitorHttp } from '@capacitor/core'
 import { useAuthStore } from './auth'
+import { config } from '../config'
+
 
 export interface Agent {
   id: number | string
@@ -73,7 +75,7 @@ export const useAgentStore = defineStore('agents', {
     loading: false,
     managementLoading: false,
     error: null as string | null,
-    discoveredBasePath: localStorage.getItem('discoveredBasePath') || '/api/v3/agents/' as string,
+    discoveredBasePath: localStorage.getItem('discoveredBasePath') || config.apiPathSegments[0],
   }),
   getters: {
     getGroups: (state): ClientGroup[] => {
@@ -110,8 +112,7 @@ export const useAgentStore = defineStore('agents', {
       
       const endpoints = [
         this.discoveredBasePath,
-        '/agents/',
-        '/api/v3/agents/',
+        ...config.apiPathSegments
       ]
 
       const uniqueEndpoints = [...new Set(endpoints)]
@@ -191,7 +192,7 @@ export const useAgentStore = defineStore('agents', {
       }
 
       const subtypes = typeMap[type] || [type]
-      const basePaths = [this.discoveredBasePath, '/api/v3/agents/', '/agents/']
+      const basePaths = [this.discoveredBasePath, ...config.apiPathSegments]
       
       const paths: string[] = []
       basePaths.forEach(base => {
@@ -232,11 +233,7 @@ export const useAgentStore = defineStore('agents', {
       if (!auth.isAuthenticated) return
 
       this.managementLoading = true
-      const endpoints = [
-        '/scripts/',
-        '/api/v3/scripts/',
-        '/api/v1/scripts/',
-      ]
+      const endpoints = config.apiPathSegments
 
       for (const path of endpoints) {
         try {
@@ -259,7 +256,8 @@ export const useAgentStore = defineStore('agents', {
       const auth = useAuthStore()
       if (!auth.isAuthenticated) return false
 
-      const basePaths = [this.discoveredBasePath, '/api/v3/agents/', '/agents/']
+      const basePaths = [this.discoveredBasePath, ...config.apiPathSegments]
+
       const paths: string[] = []
       basePaths.forEach(base => {
         paths.push(`${base}${agentId}/${action}/`)
@@ -287,9 +285,11 @@ export const useAgentStore = defineStore('agents', {
       
       const paths = [
         `${this.discoveredBasePath}${agentId}/processes/${pid}/`,
-        `/api/v3/agents/${agentId}/processes/${pid}/`,
-        `/processes/${agentId}/${pid}/`
       ]
+      
+      config.apiPathSegments.forEach((segment: string) => {
+        paths.push(`${segment}${agentId}/processes/${pid}/`)
+      })
       
       for (const path of [...new Set(paths)]) {
         try {
@@ -310,7 +310,8 @@ export const useAgentStore = defineStore('agents', {
       const modeMap = { 'control': '11', 'terminal': '12', 'file': '13' }
       const viewmode = modeMap[mode] || '11'
 
-      const basePaths = [this.discoveredBasePath, '/api/v3/agents/', '/agents/']
+      const basePaths = [this.discoveredBasePath, ...config.apiPathSegments]
+
       const tokenEndpoints = ['mesh', 'token', 'meshcentral']
       
       const paths: string[] = []
@@ -349,7 +350,7 @@ export const useAgentStore = defineStore('agents', {
                   meshHost = `mesh.${domain}`
                 }
               } catch (e) {
-                meshHost = 'mesh.gaulabs.com'
+                meshHost = config.meshCentralFallback
               }
               
               finalUrl = `https://${meshHost}/?login=${token}&gotonode=${nodeid || agentId}&viewmode=${viewmode}`

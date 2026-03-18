@@ -6,7 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    hostname: 'rmm.gaulabs.com'
+    hostname: 'localhost'
+
   },
   plugins: {
     CapacitorHttp: {
