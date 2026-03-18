@@ -206,8 +206,8 @@
                 <iframe :src="remoteUrl" id="mesh-remote" class="full-width h-full border-none"></iframe>
                 <div v-if="trackpadActive" class="absolute-full z-top" style="background: rgba(0,0,0,0.1)" @touchstart="handleTouchStart" @touchmove="handleTouchMove">
                   <div class="absolute-bottom-right q-pa-md row q-gutter-sm">
-                    <q-btn fab icon="mouse" color="primary" label="L" @click="sendMouseClick(2, 3)" />
-                    <q-btn fab icon="mouse" color="secondary" label="R" @click="sendMouseClick(4, 5)" />
+                    <q-btn fab icon="mouse" color="primary" label="L" @click.stop="sendMouseClick(2, 3)" @touchstart.stop />
+                    <q-btn fab icon="mouse" color="secondary" label="R" @click.stop="sendMouseClick(4, 5)" @touchstart.stop />
                   </div>
                   <div class="absolute pointer-events-none" :style="{ left: cursorX + 'px', top: cursorY + 'px', transform: 'translate(-50%, -50%)' }">
                     <q-icon name="navigation" color="primary" size="24px" class="cursor-rotate" />
@@ -312,10 +312,16 @@ function sendMouseClick(down: number, up: number) {
 function relayMouseEvent(button: number) {
   const iframe = document.getElementById('mesh-remote') as HTMLIFrameElement
   if (iframe && iframe.contentWindow) {
+    // Normalize to 0-1000 range
+    const width = window.innerWidth
+    const height = window.innerHeight * 0.6
+    const x = Math.round((cursorX.value / width) * 1000)
+    const y = Math.round((cursorY.value / height) * 1000)
+
     iframe.contentWindow.postMessage({
       type: 'mouse',
-      x: Math.round(cursorX.value),
-      y: Math.round(cursorY.value),
+      x: Math.max(0, Math.min(1000, x)),
+      y: Math.max(0, Math.min(1000, y)),
       button
     }, '*')
   }

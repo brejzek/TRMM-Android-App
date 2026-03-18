@@ -164,9 +164,29 @@ export const useAgentStore = defineStore('agents', {
 
       this.managementLoading = true
       
+      // Try to use cached working path first
+      const cacheKey = `workingPath_${type}`
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        const path = cached.replace('{agentId}', String(agentId))
+        try {
+          const response = await CapacitorHttp.get({
+            url: `${auth.apiUrl}${path}`,
+            headers: { 'X-API-KEY': auth.apiKey }
+          })
+          if (response.status === 200) {
+            if (type === 'services') this.services = response.data
+            else if (type === 'software') this.software = response.data
+            else if (type === 'processes') this.processes = response.data
+            this.managementLoading = false
+            return
+          }
+        } catch (e) {}
+      }
+
       const typeMap: Record<string, string[]> = {
-        services: ['winsvcs', 'getwinsvcs', 'get_winsvcs', 'svcs', 'winservices', 'services', 'getservices'],
-        software: ['getsoftware', 'software', 'installed-software', 'inventory', 'get_installed_software'],
+        services: ['services', 'winsvcs', 'getwinsvcs', 'svcs', 'winservices', 'getservices'],
+        software: ['software', 'getsoftware', 'installed-software', 'inventory'],
         processes: ['processes']
       }
 
@@ -176,11 +196,7 @@ export const useAgentStore = defineStore('agents', {
       const paths: string[] = []
       basePaths.forEach(base => {
         subtypes.forEach(sub => {
-          // Pattern 1: /agents/{id}/{sub}/ (e.g. /agents/ID/processes/)
           paths.push(`${base}${agentId}/${sub}/`)
-          
-          // Pattern 2: /{sub}/{id}/ (e.g. /software/ID/) 
-          // (Only try if base starts with / and we can extract a possible root)
           if (base.startsWith('/')) {
             paths.push(`/${sub}/${agentId}/`)
             paths.push(`/api/v3/${sub}/${agentId}/`)
@@ -196,6 +212,10 @@ export const useAgentStore = defineStore('agents', {
           })
 
           if (response.status === 200) {
+            // Save working pattern (replace ID with placeholder)
+            const pattern = path.replace(String(agentId), '{agentId}')
+            localStorage.setItem(cacheKey, pattern)
+
             if (type === 'services') this.services = response.data
             else if (type === 'software') this.software = response.data
             else if (type === 'processes') this.processes = response.data
