@@ -206,8 +206,8 @@
                 <iframe :src="remoteUrl" id="mesh-remote" class="full-width h-full border-none"></iframe>
                 <div v-if="trackpadActive" class="absolute-full z-top" style="background: rgba(0,0,0,0.1)" @touchstart="handleTouchStart" @touchmove="handleTouchMove">
                   <div class="absolute-bottom-right q-pa-md row q-gutter-sm">
-                    <q-btn fab icon="mouse" color="primary" label="L" @click.stop="sendMouseClick(2, 3)" @touchstart.stop />
-                    <q-btn fab icon="mouse" color="secondary" label="R" @click.stop="sendMouseClick(4, 5)" @touchstart.stop />
+                    <q-btn fab icon="mouse" color="primary" label="L" @click.stop="sendMouseClick(1, 2)" @touchstart.stop />
+                    <q-btn fab icon="mouse" color="secondary" label="R" @click.stop="sendMouseClick(3, 4)" @touchstart.stop />
                   </div>
                   <div class="absolute pointer-events-none" :style="{ left: cursorX + 'px', top: cursorY + 'px', transform: 'translate(-50%, -50%)' }">
                     <q-icon name="navigation" color="primary" size="24px" class="cursor-rotate" />
@@ -300,7 +300,7 @@ function handleTouchMove(e: TouchEvent) {
     cursorY.value = Math.max(0, Math.min(window.innerHeight * 0.6, cursorY.value + deltaY))
     lastTouchX = touch.clientX
     lastTouchY = touch.clientY
-    relayMouseEvent(1) // Move
+    relayMouseEvent(0) // Move
   }
 }
 
